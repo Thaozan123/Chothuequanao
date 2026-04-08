@@ -1,10 +1,12 @@
 using ChoThueQuanAo.Data;
 using ChoThueQuanAo.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChoThueQuanAo.Controllers
 {
+    [Authorize(Roles = "Admin,Staff")]
     public class ProductController : Controller
     {
         private readonly AppDbContext _context;
