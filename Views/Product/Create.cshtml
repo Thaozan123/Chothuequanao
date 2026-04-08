@@ -1,0 +1,50 @@
+@model ChoThueQuanAo.Models.Product
+@using ChoThueQuanAo.Models
+
+<h2>Thêm sản phẩm</h2>
+
+<form asp-action="Create" method="post">
+   <div>
+       <label>Mã sản phẩm</label>
+       <input asp-for="ProductCode" class="form-control" />
+   </div>
+
+   <div>
+       <label>Tên sản phẩm</label>
+       <input asp-for="Name" class="form-control" />
+   </div>
+
+   <div>
+       <label>Danh mục</label>
+       <select asp-for="CategoryId" class="form-control">
+           <option value="">-- Chọn danh mục --</option>
+           @foreach (var c in (ViewBag.Categories as List<ProductCategory>) ?? new List<ProductCategory>())
+           {
+               <option value="@c.Id">@c.Name</option>
+           }
+       </select>
+   </div>
+
+   <div>
+       <label>Size</label>
+       <input asp-for="Size" class="form-control" />
+   </div>
+
+   <div>
+       <label>Giá thuê/ngày</label>
+       <input asp-for="RentalPricePerDay" class="form-control" />
+   </div>
+
+   <div>
+       <label>Tiền cọc</label>
+       <input asp-for="Deposit" class="form-control" />
+   </div>
+
+   <div>
+       <label>Tồn kho</label>
+       <input asp-for="StockQuantity" class="form-control" />
+   </div>
+
+   <br />
+   <button type="submit" class="btn btn-success">Lưu</button>
+</form>

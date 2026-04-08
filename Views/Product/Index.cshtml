@@ -1,0 +1,33 @@
+@model IEnumerable<ChoThueQuanAo.Models.Product>
+
+<h2>Danh sách sản phẩm</h2>
+
+<p>
+   <a asp-action="Create" class="btn btn-primary">Thêm sản phẩm</a>
+</p>
+
+<table class="table table-bordered">
+   <thead>
+       <tr>
+           <th>Mã SP</th>
+           <th>Tên sản phẩm</th>
+           <th>Size</th>
+           <th>Giá thuê/ngày</th>
+           <th>Tồn kho</th>
+           <th>Danh mục</th>
+       </tr>
+   </thead>
+   <tbody>
+       @foreach (var item in Model)
+       {
+           <tr>
+               <td>@item.ProductCode</td>
+               <td>@item.Name</td>
+               <td>@item.Size</td>
+               <td>@item.RentalPricePerDay</td>
+               <td>@item.StockQuantity</td>
+               <td>@item.Category?.Name</td>
+           </tr>
+       }
+   </tbody>
+</table>
