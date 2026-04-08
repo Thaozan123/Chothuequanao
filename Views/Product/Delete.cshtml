@@ -1,0 +1,34 @@
+@model ChoThueQuanAo.Models.Product
+
+@{
+    ViewData["Title"] = "Xóa sản phẩm";
+}
+
+<h2>Xóa sản phẩm</h2>
+
+<h4>Bạn có chắc muốn xóa sản phẩm này không?</h4>
+
+<table class="table table-bordered">
+    <tr>
+        <th>Mã sản phẩm</th>
+        <td>@Model.ProductCode</td>
+    </tr>
+    <tr>
+        <th>Tên sản phẩm</th>
+        <td>@Model.Name</td>
+    </tr>
+    <tr>
+        <th>Danh mục</th>
+        <td>@Model.Category?.Name</td>
+    </tr>
+    <tr>
+        <th>Trạng thái</th>
+        <td>@Model.Status</td>
+    </tr>
+</table>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Xóa</button>
+    <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+</form>

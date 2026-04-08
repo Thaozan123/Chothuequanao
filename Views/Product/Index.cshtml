@@ -1,33 +1,66 @@
 @model IEnumerable<ChoThueQuanAo.Models.Product>
 
+@{
+    ViewData["Title"] = "Danh sách sản phẩm";
+}
+
 <h2>Danh sách sản phẩm</h2>
 
 <p>
-   <a asp-action="Create" class="btn btn-primary">Thêm sản phẩm</a>
+    <a asp-action="Create" class="btn btn-primary">Thêm sản phẩm</a>
 </p>
 
-<table class="table table-bordered">
-   <thead>
-       <tr>
-           <th>Mã SP</th>
-           <th>Tên sản phẩm</th>
-           <th>Size</th>
-           <th>Giá thuê/ngày</th>
-           <th>Tồn kho</th>
-           <th>Danh mục</th>
-       </tr>
-   </thead>
-   <tbody>
-       @foreach (var item in Model)
-       {
-           <tr>
-               <td>@item.ProductCode</td>
-               <td>@item.Name</td>
-               <td>@item.Size</td>
-               <td>@item.RentalPricePerDay</td>
-               <td>@item.StockQuantity</td>
-               <td>@item.Category?.Name</td>
-           </tr>
-       }
-   </tbody>
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Mã sản phẩm</th>
+            <th>Tên sản phẩm</th>
+            <th>Danh mục</th>
+            <th>Mô tả</th>
+            <th>Màu sắc</th>
+            <th>Chất liệu</th>
+            <th>Size</th>
+            <th>Giá thuê/ngày</th>
+            <th>Phí trễ/ngày</th>
+            <th>Tiền cọc</th>
+            <th>Hình ảnh</th>
+            <th>Trạng thái</th>
+            <th>Tồn kho</th>
+            <th>Chức năng</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.ProductCode</td>
+                    <td>@item.Name</td>
+                    <td>@item.Category?.Name</td>
+                    <td>@item.Description</td>
+                    <td>@item.Color</td>
+                    <td>@item.Material</td>
+                    <td>@item.Size</td>
+                    <td>@item.RentalPricePerDay</td>
+                    <td>@item.LateFeePerDay</td>
+                    <td>@item.Deposit</td>
+                    <td>@item.ImageUrl</td>
+                    <td>@item.Status</td>
+                    <td>@item.StockQuantity</td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm">Xem</a>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Sửa</a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Xóa</a>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="14" class="text-center">Chưa có sản phẩm nào.</td>
+            </tr>
+        }
+    </tbody>
 </table>

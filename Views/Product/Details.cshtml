@@ -1,0 +1,65 @@
+@model ChoThueQuanAo.Models.Product
+
+@{
+    ViewData["Title"] = "Chi tiết sản phẩm";
+}
+
+<h2>Chi tiết sản phẩm</h2>
+
+<table class="table table-bordered">
+    <tr>
+        <th>Mã sản phẩm</th>
+        <td>@Model.ProductCode</td>
+    </tr>
+    <tr>
+        <th>Tên sản phẩm</th>
+        <td>@Model.Name</td>
+    </tr>
+    <tr>
+        <th>Danh mục</th>
+        <td>@Model.Category?.Name</td>
+    </tr>
+    <tr>
+        <th>Mô tả</th>
+        <td>@Model.Description</td>
+    </tr>
+    <tr>
+        <th>Màu sắc</th>
+        <td>@Model.Color</td>
+    </tr>
+    <tr>
+        <th>Chất liệu</th>
+        <td>@Model.Material</td>
+    </tr>
+    <tr>
+        <th>Size</th>
+        <td>@Model.Size</td>
+    </tr>
+    <tr>
+        <th>Giá thuê/ngày</th>
+        <td>@Model.RentalPricePerDay</td>
+    </tr>
+    <tr>
+        <th>Phí trễ/ngày</th>
+        <td>@Model.LateFeePerDay</td>
+    </tr>
+    <tr>
+        <th>Tiền cọc</th>
+        <td>@Model.Deposit</td>
+    </tr>
+    <tr>
+        <th>Link hình ảnh</th>
+        <td>@Model.ImageUrl</td>
+    </tr>
+    <tr>
+        <th>Trạng thái</th>
+        <td>@Model.Status</td>
+    </tr>
+    <tr>
+        <th>Tồn kho</th>
+        <td>@Model.StockQuantity</td>
+    </tr>
+</table>
+
+<a asp-action="Index" class="btn btn-primary">Quay lại</a>
+<a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Sửa</a>

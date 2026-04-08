@@ -2,13 +2,15 @@
 @using ChoThueQuanAo.Models
 
 @{
-    ViewData["Title"] = "Thêm sản phẩm";
+    ViewData["Title"] = "Sửa sản phẩm";
     var categories = ViewBag.Categories as List<ProductCategory> ?? new List<ProductCategory>();
 }
 
-<h2>Thêm sản phẩm</h2>
+<h2>Sửa sản phẩm</h2>
 
-<form asp-action="Create" method="post">
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+
     <div class="mb-3">
         <label asp-for="ProductCode" class="form-label">Mã sản phẩm</label>
         <input asp-for="ProductCode" class="form-control" />
@@ -85,6 +87,6 @@
         <input asp-for="StockQuantity" class="form-control" />
     </div>
 
-    <button type="submit" class="btn btn-success">Lưu</button>
+    <button type="submit" class="btn btn-warning">Cập nhật</button>
     <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
 </form>
