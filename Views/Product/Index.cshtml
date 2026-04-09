@@ -4,54 +4,61 @@
     ViewData["Title"] = "Danh sách sản phẩm";
 }
 
-<h2>Danh sách sản phẩm</h2>
+<h2 class="mb-3">Danh sách sản phẩm</h2>
 
 <p>
-    <a asp-action="Create" class="btn btn-primary">Thêm sản phẩm</a>
+    <a asp-action="Create" class="btn btn-primary">+ Thêm sản phẩm</a>
 </p>
 
-<table class="table table-bordered table-striped">
-    <thead>
+<table class="table table-bordered table-striped table-hover">
+    <thead class="table-dark">
         <tr>
-            <th>Mã sản phẩm</th>
-            <th>Tên sản phẩm</th>
+            <th>Mã</th>
+            <th>Tên</th>
             <th>Danh mục</th>
-            <th>Mô tả</th>
-            <th>Màu sắc</th>
-            <th>Chất liệu</th>
+            <th>Màu</th>
             <th>Size</th>
-            <th>Giá thuê/ngày</th>
-            <th>Phí trễ/ngày</th>
-            <th>Tiền cọc</th>
-            <th>Hình ảnh</th>
-            <th>Trạng thái</th>
+            <th>Giá/ngày</th>
+            <th>Cọc</th>
             <th>Tồn kho</th>
             <th>Chức năng</th>
         </tr>
     </thead>
+
     <tbody>
         @if (Model != null && Model.Any())
         {
-            @foreach (var item in Model)
+            foreach (var item in Model)
             {
                 <tr>
                     <td>@item.ProductCode</td>
                     <td>@item.Name</td>
                     <td>@item.Category?.Name</td>
-                    <td>@item.Description</td>
                     <td>@item.Color</td>
-                    <td>@item.Material</td>
                     <td>@item.Size</td>
                     <td>@item.RentalPricePerDay</td>
-                    <td>@item.LateFeePerDay</td>
                     <td>@item.Deposit</td>
-                    <td>@item.ImageUrl</td>
-                    <td>@item.Status</td>
                     <td>@item.StockQuantity</td>
+
                     <td>
                         <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm">Xem</a>
                         <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Sửa</a>
                         <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Xóa</a>
+
+                        <!-- 🛒 GIỎ HÀNG -->
+                        @if (item.StockQuantity > 0)
+                        {
+                            <a class="btn btn-success btn-sm"
+                               asp-controller="Cart"
+                               asp-action="AddToCart"
+                               asp-route-productId="@item.Id">
+                                🛒 Thêm
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-danger">Hết hàng</span>
+                        }
                     </td>
                 </tr>
             }
@@ -59,7 +66,7 @@
         else
         {
             <tr>
-                <td colspan="14" class="text-center">Chưa có sản phẩm nào.</td>
+                <td colspan="9" class="text-center">Chưa có sản phẩm nào</td>
             </tr>
         }
     </tbody>

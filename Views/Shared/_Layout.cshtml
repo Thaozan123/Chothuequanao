@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ChoThueQuanAo.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
 
 <body>
@@ -24,12 +25,10 @@
                 </button>
 
                 <div class="collapse navbar-collapse" id="navbarMain">
+
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Product" asp-action="Index">Sản phẩm</a>
@@ -37,17 +36,42 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Category" asp-action="Index">Danh mục SP</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="RentalContract" asp-action="Index">Hợp đồng</a>
+                        </li>
                     </ul>
 
-                    <ul class="navbar-nav">
+                    <ul class="navbar-nav align-items-center">
+
+                        @{
+                            var cart = Context.Session.GetString("Cart");
+                            int count = string.IsNullOrEmpty(cart) ? 0 : cart.Split(',').Length;
+                        }
+
+                        <li class="nav-item me-3">
+                            <a class="nav-link position-relative" asp-controller="Cart" asp-action="Index">
+                                🛒 Giỏ hàng
+                                @if (count > 0)
+                                {
+                                    <span style="position:absolute; top:0; right:-10px; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:10px;">
+                                        @count
+                                    </span>
+                                }
+                            </a>
+                        </li>
+
                         @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
                             <li class="nav-item">
-                                <span class="nav-link text-dark fw-bold">👋 Chào, @User.Identity.Name</span>
+                                <span class="nav-link text-dark fw-bold">
+                                    👋 @User.Identity.Name
+                                </span>
                             </li>
                             <li class="nav-item">
-                                <form asp-controller="Account" asp-action="Logout" method="post" class="form-inline">
-                                    <button type="submit" class="nav-link btn btn-link text-dark border-0" style="text-decoration: none;">Đăng xuất</button>
+                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                    <button type="submit" class="nav-link btn btn-link text-danger border-0" style="text-decoration: none;">
+                                        Đăng xuất
+                                    </button>
                                 </form>
                             </li>
                         }
@@ -61,6 +85,7 @@
                             </li>
                         }
                     </ul>
+
                 </div>
 
             </div>
@@ -74,9 +99,8 @@
     </div>
 
     <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - ChoThueQuanAo -
-            <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+        <div class="container text-center mt-3">
+            &copy; 2026 - ChoThueQuanAo - <a asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
 
