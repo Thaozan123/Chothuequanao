@@ -1,4 +1,5 @@
 using ChoThueQuanAo.Data;
+using ChoThueQuanAo.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,12 +7,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
+// 🔥 THÊM SESSION
+builder.Services.AddSession();
+
+//  ĐĂNG KÝ DB
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")
     )
 );
 
+// ĐĂNG KÝ SERVICE
+builder.Services.AddScoped<RentalContractService>();
+
+// AUTH
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -33,6 +42,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+// 🔥 THÊM SESSION (QUAN TRỌNG)
+app.UseSession();
 
 app.UseAuthentication();
 app.UseAuthorization();

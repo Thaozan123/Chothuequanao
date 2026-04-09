@@ -24,6 +24,8 @@
                 </button>
 
                 <div class="collapse navbar-collapse" id="navbarMain">
+
+                    <!-- MENU BÊN TRÁI -->
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
@@ -34,17 +36,57 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Product" asp-action="Index">Sản phẩm</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="RentalContract" asp-action="Index">
+                                Hợp đồng
+                            </a>
+                        </li>
                     </ul>
 
-                    <ul class="navbar-nav">
+                    <!-- MENU BÊN PHẢI -->
+                    <ul class="navbar-nav align-items-center">
+
+                        <!-- 🛒 GIỎ HÀNG + COUNT -->
+                        @{
+                            var cart = Context.Session.GetString("Cart");
+                            int count = string.IsNullOrEmpty(cart) ? 0 : cart.Split(',').Length;
+                        }
+
+                        <li class="nav-item">
+                            <a class="nav-link position-relative" asp-controller="Cart" asp-action="Index">
+                                🛒
+
+                                @if (count > 0)
+                                {
+                                    <span style="
+                                        position:absolute;
+                                        top:0;
+                                        right:0;
+                                        background:red;
+                                        color:white;
+                                        border-radius:50%;
+                                        padding:2px 6px;
+                                        font-size:12px;">
+                                        @count
+                                    </span>
+                                }
+                            </a>
+                        </li>
+
                         @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
                             <li class="nav-item">
-                                <span class="nav-link text-dark fw-bold">👋 Chào, @User.Identity.Name</span>
+                                <span class="nav-link text-dark fw-bold">
+                                    👋 Chào, @User.Identity.Name
+                                </span>
                             </li>
                             <li class="nav-item">
                                 <form asp-controller="Account" asp-action="Logout" method="post" class="form-inline">
-                                    <button type="submit" class="nav-link btn btn-link text-dark border-0" style="text-decoration: none;">Đăng xuất</button>
+                                    <button type="submit"
+                                            class="nav-link btn btn-link text-dark border-0"
+                                            style="text-decoration: none;">
+                                        Đăng xuất
+                                    </button>
                                 </form>
                             </li>
                         }
@@ -58,6 +100,7 @@
                             </li>
                         }
                     </ul>
+
                 </div>
 
             </div>
@@ -72,7 +115,7 @@
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2026 - ChoThueQuanAo - 
+            &copy; 2026 - ChoThueQuanAo -
             <a asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
