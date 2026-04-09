@@ -33,12 +33,13 @@ namespace ChoThueQuanAo.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
+            // Kiểm tra trùng lặp cả Email và Số điện thoại
             var existingUser = await _context.Users
-                .FirstOrDefaultAsync(x => x.Email == model.Email);
+                .AnyAsync(x => x.Email == model.Email || x.Phone == model.Phone);
 
-            if (existingUser != null)
+            if (existingUser)
             {
-                ModelState.AddModelError("", "Email này đã tồn tại.");
+                ModelState.AddModelError("", "Email hoặc Số điện thoại này đã được sử dụng.");
                 return View(model);
             }
 
@@ -46,13 +47,10 @@ namespace ChoThueQuanAo.Controllers
             {
                 FullName = model.FullName,
                 Email = model.Email,
-                Phone = model.Phone,
+                Phone = model.Phone, // Lưu SĐT để sau này đăng nhập
                 Address = model.Address,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
-
-                // Mặc định khi đăng ký là Customer
-                Role = "Customer",
-
+                Role = "Customer", // Mặc định là khách hàng
                 IsActive = true,
                 CreatedAt = DateTime.Now
             };
@@ -78,44 +76,55 @@ namespace ChoThueQuanAo.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
+            // LOGIC QUAN TRỌNG: Tìm user bằng Email HOẶC Số điện thoại
             var user = await _context.Users
-                .FirstOrDefaultAsync(x => x.Email == model.Email && x.IsActive);
+                .FirstOrDefaultAsync(x => (x.Email == model.Email || x.Phone == model.Email) && x.IsActive);
 
             if (user == null)
             {
-                ModelState.AddModelError("", "Email hoặc mật khẩu không đúng.");
+                ModelState.AddModelError("", "Tài khoản không tồn tại hoặc đã bị khóa.");
                 return View(model);
             }
 
+            // Kiểm tra mật khẩu mã hóa BCrypt
             bool isValidPassword = BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash);
 
             if (!isValidPassword)
             {
-                ModelState.AddModelError("", "Email hoặc mật khẩu không đúng.");
+                ModelState.AddModelError("", "Thông tin đăng nhập không chính xác.");
                 return View(model);
             }
 
+            // Tạo danh sách Claim (Thông tin định danh)
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.FullName),
-                new Claim(ClaimTypes.Email, user.Email),
-
-                // Gắn Role vào cookie đăng nhập
-                new Claim(ClaimTypes.Role, user.Role)
+                new Claim(ClaimTypes.Email, user.Email ?? ""),
+                new Claim("Phone", user.Phone ?? ""),
+                new Claim(ClaimTypes.Role, user.Role) // Lưu Role để phân quyền [Authorize(Roles="...")]
             };
 
-            var identity = new ClaimsIdentity(
-                claims,
-                CookieAuthenticationDefaults.AuthenticationScheme
-            );
-
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
 
+            // Đăng nhập vào hệ thống (Lưu Cookie)
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                principal
+                principal,
+                new AuthenticationProperties
+                {
+                    IsPersistent = true, // Ghi nhớ đăng nhập
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7) // Hết hạn sau 7 ngày
+                }
             );
+
+            // Phân hướng trang sau khi đăng nhập thành công
+            if (user.Role == "Admin" || user.Role == "Staff")
+            {
+                // Nếu là Admin/Staff thì vào trang quản lý (tùy bạn đặt tên Controller)
+                return RedirectToAction("Index", "Category"); 
+            }
 
             return RedirectToAction("Index", "Home");
         }
@@ -123,10 +132,7 @@ namespace ChoThueQuanAo.Controllers
         [Authorize]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme
-            );
-
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Login");
         }
 
@@ -144,21 +150,23 @@ namespace ChoThueQuanAo.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
+            // Cho phép tìm tài khoản để lấy lại MK bằng Email hoặc SĐT
             var user = await _context.Users
-                .FirstOrDefaultAsync(x => x.Email == model.Email && x.IsActive);
+                .FirstOrDefaultAsync(x => (x.Email == model.Email || x.Phone == model.Email) && x.IsActive);
 
             if (user == null)
             {
-                ModelState.AddModelError("", "Không tìm thấy tài khoản với email này.");
+                ModelState.AddModelError("", "Không tìm thấy tài khoản tương ứng.");
                 return View(model);
             }
 
+            // Cập nhật mật khẩu mới
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
 
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "Đổi mật khẩu thành công. Vui lòng đăng nhập lại.";
+            TempData["Success"] = "Đổi mật khẩu thành công. Hãy đăng nhập lại.";
             return RedirectToAction("Login");
         }
 

@@ -33,13 +33,23 @@
 
     <div class="mb-3">
         <label asp-for="Password" class="form-label">Mật khẩu</label>
-        <input asp-for="Password" class="form-control" />
+        <div class="input-group">
+            <input asp-for="Password" class="form-control" id="Password" />
+            <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()" id="eyeIcon1">
+                👁
+            </button>
+        </div>
         <span asp-validation-for="Password" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
         <label asp-for="ConfirmPassword" class="form-label">Nhập lại mật khẩu</label>
-        <input asp-for="ConfirmPassword" class="form-control" />
+        <div class="input-group">
+            <input asp-for="ConfirmPassword" class="form-control" id="ConfirmPassword" />
+            <button type="button" class="btn btn-outline-secondary" onclick="toggleConfirmPassword()" id="eyeIcon2">
+                👁
+            </button>
+        </div>
         <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
     </div>
 
@@ -49,4 +59,32 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        function togglePassword() {
+            var passwordInput = document.getElementById("Password");
+            var icon = document.getElementById("eyeIcon1");
+
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                icon.innerText = "🙈";
+            } else {
+                passwordInput.type = "password";
+                icon.innerText = "👁";
+            }
+        }
+
+        function toggleConfirmPassword() {
+            var confirmInput = document.getElementById("ConfirmPassword");
+            var icon = document.getElementById("eyeIcon2");
+
+            if (confirmInput.type === "password") {
+                confirmInput.type = "text";
+                icon.innerText = "🙈";
+            } else {
+                confirmInput.type = "password";
+                icon.innerText = "👁";
+            }
+        }
+    </script>
 }
