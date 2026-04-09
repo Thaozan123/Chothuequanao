@@ -1,0 +1,37 @@
+@model IEnumerable<ChoThueQuanAo.Models.RentalContract>
+
+@{
+    ViewData["Title"] = "Hợp đồng của tôi";
+}
+
+<h2>Hợp đồng của tôi</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Mã hợp đồng</th>
+            <th>Ngày thuê</th>
+            <th>Ngày trả dự kiến</th>
+            <th>Tổng tiền</th>
+            <th>Trạng thái</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.ContractCode</td>
+                <td>@item.StartDate.ToString("dd/MM/yyyy")</td>
+                <td>@item.ExpectedReturnDate.ToString("dd/MM/yyyy")</td>
+                <td>@item.TotalAmount.ToString("N0")</td>
+                <td>@item.Status</td>
+                <td>
+                    <a asp-action="MyDetails" asp-route-id="@item.Id" class="btn btn-sm btn-primary">
+                        Xem chi tiết
+                    </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

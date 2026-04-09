@@ -3,33 +3,52 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChoThueQuanAo.Data
 {
-   public class AppDbContext : DbContext
-   {
-       public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
-       {
-       }
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
+        }
 
-       public DbSet<User> Users { get; set; }
-       public DbSet<ProductCategory> ProductCategories { get; set; }
-       public DbSet<Product> Products { get; set; }
-       public DbSet<ProductMaintenanceLog> ProductMaintenanceLogs { get; set; }
-       public DbSet<Promotion> Promotions { get; set; }
-       public DbSet<RentalContract> RentalContracts { get; set; }
-       public DbSet<RentalContractDetail> RentalContractDetails { get; set; }
-       public DbSet<Inspection> Inspections { get; set; }
-       public DbSet<DeliveryOrder> DeliveryOrders { get; set; }
-       public DbSet<Payment> Payments { get; set; }
-       public DbSet<Supplier> Suppliers { get; set; }
-       public DbSet<PurchaseOrder> PurchaseOrders { get; set; }
-       public DbSet<PurchaseOrderDetail> PurchaseOrderDetails { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<ProductCategory> ProductCategories { get; set; }
+        public DbSet<RentalContract> RentalContracts { get; set; }
+        public DbSet<RentalContractDetail> RentalContractDetails { get; set; }
+        public DbSet<Promotion> Promotions { get; set; }
 
-       protected override void OnModelCreating(ModelBuilder modelBuilder)
-       {
-           modelBuilder.Entity<Product>()
-               .HasOne(p => p.Category)
-               .WithMany()
-               .HasForeignKey(p => p.CategoryId)
-               .OnDelete(DeleteBehavior.SetNull);
-       }
-   }
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<RentalContract>()
+                .HasOne(rc => rc.Customer)
+                .WithMany(u => u.CustomerContracts)
+                .HasForeignKey(rc => rc.CustomerId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<RentalContract>()
+                .HasOne(rc => rc.Staff)
+                .WithMany(u => u.StaffContracts)
+                .HasForeignKey(rc => rc.StaffId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<RentalContract>()
+                .HasOne(rc => rc.Promotion)
+                .WithMany()
+                .HasForeignKey(rc => rc.PromotionId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<RentalContractDetail>()
+                .HasOne(d => d.RentalContract)
+                .WithMany(rc => rc.RentalContractDetails)
+                .HasForeignKey(d => d.RentalContractId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RentalContractDetail>()
+                .HasOne(d => d.Product)
+                .WithMany(p => p.RentalContractDetails)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.NoAction);
+        }
+    }
 }

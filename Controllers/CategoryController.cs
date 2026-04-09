@@ -2,12 +2,12 @@ using ChoThueQuanAo.Data;
 using ChoThueQuanAo.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization; // Thêm thư viện này để dùng Authorize
+using Microsoft.AspNetCore.Authorization;
 
 namespace ChoThueQuanAo.Controllers
 {
-    // Cấu hình để chỉ Admin và Staff mới có thể vào Controller này
-    [Authorize(Roles = "Admin,Staff")] 
+    // Chỉ có Staff mới được phép vào Controller này để quản lý danh mục
+    [Authorize(Roles = "Staff")] 
     public class CategoryController : Controller
     {
         private readonly AppDbContext _context;
@@ -17,20 +17,20 @@ namespace ChoThueQuanAo.Controllers
             _context = context;
         }
 
-        // 1. Xem danh sách - Cả Admin và Staff đều xem được
+        // 1. Xem danh sách danh mục
         public async Task<IActionResult> Index()
         {
             var categories = await _context.ProductCategories.ToListAsync();
             return View(categories);
         }
 
-        // 2. GET: Create - Cả Admin và Staff
+        // 2. GET: Create
         public IActionResult Create()
         {
             return View();
         }
 
-        // 3. POST: Create - Cả Admin và Staff
+        // 3. POST: Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ProductCategory category)
@@ -44,7 +44,7 @@ namespace ChoThueQuanAo.Controllers
             return View(category);
         }
 
-        // 4. GET: Edit - Cả Admin và Staff
+        // 4. GET: Edit
         public async Task<IActionResult> Edit(int id)
         {
             var category = await _context.ProductCategories.FindAsync(id);
@@ -52,7 +52,7 @@ namespace ChoThueQuanAo.Controllers
             return View(category);
         }
 
-        // 5. POST: Edit - Cả Admin và Staff
+        // 5. POST: Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ProductCategory category)
@@ -66,8 +66,7 @@ namespace ChoThueQuanAo.Controllers
             return View(category);
         }
 
-        // 6. GET: Delete 
-        // Nếu bạn muốn CHỈ Admin mới được xóa, hãy sửa thành: [Authorize(Roles = "Admin")]
+        // 6. GET: Delete
         public async Task<IActionResult> Delete(int id)
         {
             var category = await _context.ProductCategories.FindAsync(id);
