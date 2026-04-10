@@ -1,0 +1,22 @@
+@model ChoThueQuanAo.Models.Supplier
+
+@{
+    ViewData["Title"] = "Xóa nhà cung cấp";
+}
+
+<h2>Xóa nhà cung cấp</h2>
+
+<h4>Bạn có chắc muốn xóa nhà cung cấp này không?</h4>
+
+<div>
+    <p><strong>Tên:</strong> @Model.Name</p>
+    <p><strong>SĐT:</strong> @Model.Phone</p>
+    <p><strong>Email:</strong> @Model.Email</p>
+    <p><strong>Địa chỉ:</strong> @Model.Address</p>
+</div>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Xóa</button>
+    <a asp-action="Index" class="btn btn-secondary">Hủy</a>
+</form>
