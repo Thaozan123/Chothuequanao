@@ -17,17 +17,15 @@ namespace ChoThueQuanAo.Controllers
         }
 
         // ==========================================================
-        // DÀNH CHO TẤT CẢ MỌI NGƯỜI (Giao diện mua sắm)
+        // DÀNH CHO TẤT CẢ MỌI NGƯỜI
         // ==========================================================
 
         [AllowAnonymous]
         public async Task<IActionResult> Index()
         {
-            // Hiển thị danh sách sản phẩm kèm theo tên danh mục
             var products = await _context.Products
                 .Include(p => p.Category)
                 .ToListAsync();
-
             return View(products);
         }
 
@@ -38,11 +36,7 @@ namespace ChoThueQuanAo.Controllers
                 .Include(p => p.Category)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (product == null)
-            {
-                return NotFound();
-            }
-
+            if (product == null) return NotFound();
             return View(product);
         }
 
@@ -54,7 +48,7 @@ namespace ChoThueQuanAo.Controllers
         [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
-            // Load danh mục để Admin chọn khi tạo sản phẩm
+            // Nạp danh mục vào ViewBag để hiển thị dropdown
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name");
             return View();
         }
@@ -71,42 +65,53 @@ namespace ChoThueQuanAo.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+            // Nếu có lỗi, phải nạp lại danh mục để dropdown không bị trống
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
             return View(product);
         }
 
-        // 3. GET: Chỉnh sửa sản phẩm
+        // 3. GET: Chỉnh sửa sản phẩm (FIXED: Đã nạp danh mục)
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id)
         {
             var product = await _context.Products.FindAsync(id);
-
             if (product == null)
             {
                 return NotFound();
             }
+
+            // DÒNG QUAN TRỌNG: Lấy danh sách từ database nạp vào SelectList để hiện dropdown
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
+            
             return View(product);
         }
 
-        // 4. POST: Cập nhật sản phẩm
+        // 4. POST: Cập nhật sản phẩm (FIXED: Đã nạp lại danh mục nếu lỗi)
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id, Product product)
         {
-            if (id != product.Id)
-            {
-                return NotFound();
-            }
+            if (id != product.Id) return NotFound();
 
             if (ModelState.IsValid)
             {
-                _context.Update(product);
-                await _context.SaveChangesAsync();
+                try
+                {
+                    _context.Update(product);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!_context.Products.Any(e => e.Id == product.Id)) return NotFound();
+                    else throw;
+                }
                 return RedirectToAction(nameof(Index));
             }
+
+            // DÒNG QUAN TRỌNG: Nếu lưu thất bại (ModelState không hợp lệ), phải nạp lại danh mục
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
+            
             return View(product);
         }
 
@@ -118,11 +123,7 @@ namespace ChoThueQuanAo.Controllers
                 .Include(p => p.Category)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (product == null)
-            {
-                return NotFound();
-            }
-
+            if (product == null) return NotFound();
             return View(product);
         }
 
@@ -133,13 +134,11 @@ namespace ChoThueQuanAo.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var product = await _context.Products.FindAsync(id);
-
             if (product != null)
             {
                 _context.Products.Remove(product);
                 await _context.SaveChangesAsync();
             }
-
             return RedirectToAction(nameof(Index));
         }
     }
