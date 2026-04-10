@@ -16,8 +16,8 @@
         <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
 
-                <a class="navbar-brand" asp-controller="Home" asp-action="Index">
-                    ChoThueQuanAo
+                <a class="navbar-brand fw-bold text-primary" asp-controller="Home" asp-action="Index">
+                    <i class="fas fa-tshirt me-2"></i>ChoThueQuanAo
                 </a>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
@@ -34,12 +34,18 @@
                             <a class="nav-link text-dark" asp-controller="Product" asp-action="Index">Sản phẩm</a>
                         </li>
 
-                        @* PHẦN SỬA LỖI PHÂN QUYỀN Ở ĐÂY *@
+                        @* --- MỤC KHUYẾN MÃI CHO TẤT CẢ MỌI NGƯỜI --- *@
+                        <li class="nav-item">
+                            <a class="nav-link text-danger fw-bold" asp-controller="Promotion" asp-action="Index">
+                                <i class="fas fa-gift me-1"></i> Khuyến mãi
+                            </a>
+                        </li>
+
                         @if (User.Identity != null && User.Identity.IsAuthenticated)
                         {
                             @if (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Manager"))
                             {
-                                <li class="nav-item">
+                                <li class="nav-item border-start ms-2 ps-2">
                                     <a class="nav-link text-dark" asp-controller="Category" asp-action="Index">Danh mục SP</a>
                                 </li>
                                 <li class="nav-item">
@@ -64,7 +70,7 @@
 
                         <li class="nav-item me-3">
                             <a class="nav-link position-relative" asp-controller="Cart" asp-action="Index">
-                                🛒 Giỏ hàng
+                                <i class="fas fa-shopping-cart text-dark"></i> Giỏ hàng
                                 @if (count > 0)
                                 {
                                     <span style="position:absolute; top:0; right:-10px; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:10px;">

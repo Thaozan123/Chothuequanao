@@ -1,0 +1,90 @@
+@model IEnumerable<ChoThueQuanAo.Models.Promotion>
+
+<style>
+    .voucher-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: default;
+    }
+    .voucher-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    .promo-code {
+        border: 2px dashed #ff4757;
+        background-color: #fff5f5;
+        color: #ff4757;
+        letter-spacing: 1px;
+    }
+</style>
+
+<div class="container my-5">
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-uppercase" style="color: #ff4757; letter-spacing: 2px;">
+            <i class="fas fa-gift me-2"></i> Kho Voucher Khuyến Mãi <i class="fas fa-gift ms-2"></i>
+        </h2>
+        <p class="text-muted">Lấy mã ngay để nhận ưu đãi cực hời khi thuê đồ tại shop nhé!</p>
+    </div>
+
+    <div class="row">
+        @if (Model == null || !Model.Any()) {
+            <div class="col-12 text-center py-5">
+                <img src="https://cdn-icons-png.flaticon.com/512/4076/4076432.png" width="100" class="mb-3 opacity-50" />
+                <p class="text-muted h5">Hiện chưa có mã giảm giá nào khả dụng.</p>
+                <a href="@Url.Action("Index", "Product")" class="btn btn-outline-danger mt-3">Tiếp tục xem sản phẩm</a>
+            </div>
+        } else {
+            @foreach (var item in Model) {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm border-0 voucher-card" style="border-left: 6px solid #ff4757 !important; border-radius: 15px;">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title fw-bold text-dark mb-0">@item.Name</h5>
+                                <span class="badge bg-danger">HOT</span>
+                            </div>
+                            
+                            <p class="card-text text-muted small mb-3">@item.Description</p>
+                            
+                            <div class="d-flex align-items-baseline mb-3">
+                                <span class="h2 mb-0 fw-bold text-danger">
+                                    @(item.DiscountType == "Percent" ? item.DiscountValue.ToString("N0") + "%" : item.DiscountValue.ToString("N0") + "đ")
+                                </span>
+                                <span class="ms-2 text-muted fw-bold">GIẢM GIÁ</span>
+                            </div>
+
+                            <div class="bg-light rounded p-3 mb-3">
+                                <div class="small text-muted mb-1"><i class="fas fa-info-circle me-1"></i> Điều kiện:</div>
+                                <div class="fw-bold small text-dark">
+                                    Đơn hàng từ @item.MinOrderAmount.ToString("N0")đ
+                                </div>
+                                <div class="small text-muted mt-2 mb-1"><i class="fas fa-clock me-1"></i> Hạn dùng:</div>
+                                <div class="fw-bold small text-danger">
+                                    Đến hết ngày @item.EndDate.ToString("dd/MM/yyyy")
+                                </div>
+                            </div>
+
+                            <div class="promo-code p-2 text-center rounded fw-bold h5 mb-0">
+                                @item.Code
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pb-4">
+                            <button class="btn btn-danger w-100 fw-bold shadow-sm" onclick="copyCode('@item.Code')">
+                                <i class="fas fa-copy me-2"></i> SAO CHÉP MÃ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<script>
+    function copyCode(code) {
+        navigator.clipboard.writeText(code).then(function() {
+            // Thay vì dùng alert, tui dùng một thông báo nhẹ nhàng hơn (hoặc giữ alert nếu Vân muốn)
+            alert("✅ Đã sao chép mã: " + code + "\nDán vào giỏ hàng để được giảm giá nha Vân!");
+        }, function(err) {
+            console.error('Không thể sao chép mã: ', err);
+        });
+    }
+</script>

@@ -3,6 +3,7 @@ using ChoThueQuanAo.Data;
 using ChoThueQuanAo.Models;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace ChoThueQuanAo.Controllers
 {
@@ -15,17 +16,15 @@ namespace ChoThueQuanAo.Controllers
             _context = context;
         }
 
-        // 🛒 1. Thêm sản phẩm vào giỏ hàng (Lưu trong Session)
+        // 🛒 1. Thêm sản phẩm vào giỏ hàng
         public IActionResult AddToCart(int productId)
         {
             var cart = HttpContext.Session.GetString("Cart");
-
             List<int> cartItems = string.IsNullOrEmpty(cart)
                 ? new List<int>()
-                : cart.Split(',').Select(int.Parse).ToList();
+                : cart.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
 
             cartItems.Add(productId);
-
             HttpContext.Session.SetString("Cart", string.Join(",", cartItems));
 
             return RedirectToAction("Index", "Product");
@@ -35,10 +34,9 @@ namespace ChoThueQuanAo.Controllers
         public IActionResult Index()
         {
             var cart = HttpContext.Session.GetString("Cart");
-
             List<int> cartItems = string.IsNullOrEmpty(cart)
                 ? new List<int>()
-                : cart.Split(',').Select(int.Parse).ToList();
+                : cart.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
 
             var products = _context.Products
                 .Where(p => cartItems.Contains(p.Id))
@@ -47,59 +45,88 @@ namespace ChoThueQuanAo.Controllers
             return View(products);
         }
 
-        // 🔥 3. XỬ LÝ THANH TOÁN (CHECKOUT) - ĐÃ SỬA LỖI ID
-        [Authorize] // Bắt buộc khách phải đăng nhập mới được thuê đồ
-        public async Task<IActionResult> Checkout()
+        // 🔥 3. XỬ LÝ THANH TOÁN (CHECKOUT)
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> Checkout(int? promotionId, decimal discountAmount)
         {
-            // Bước A: Lấy giỏ hàng từ Session
             var cart = HttpContext.Session.GetString("Cart");
             if (string.IsNullOrEmpty(cart))
             {
                 return RedirectToAction("Index", "Product");
             }
 
-            // Bước B: Lấy ID của người dùng đang đăng nhập thực tế
+            // --- FIX LỖI GẠCH ĐỎ Ở ĐÂY ---
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim))
+            // Sử dụng ?? "0" để đảm bảo không bao giờ bị null khi Parse
+            int currentUserId = int.Parse(userIdClaim ?? "0"); 
+            
+            List<int> cartItems = cart.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+
+            // Bước D.1: Tạo đối tượng Hợp đồng tổng
+            var contract = new RentalContract
             {
-                return RedirectToAction("Login", "Account");
-            }
-            int currentUserId = int.Parse(userIdClaim);
+                ContractCode = "HD" + DateTime.Now.Ticks,
+                CustomerId = currentUserId,
+                PromotionId = promotionId,
+                DiscountAmount = discountAmount,
+                CreatedAt = DateTime.Now,
+                StartDate = DateTime.Now,
+                ExpectedReturnDate = DateTime.Now.AddDays(3),
+                Status = "PendingDeposit",
+                RentalContractDetails = new List<RentalContractDetail>() 
+            };
 
-            // Bước C: Chuyển chuỗi ID từ Session thành List
-            List<int> cartItems = cart.Split(',').Select(int.Parse).ToList();
+            decimal totalRentalPrice = 0;
+            decimal totalDeposit = 0;
 
-            // Bước D: Tạo hợp đồng dựa trên ID người dùng thật
+            // Bước D.2: Lặp qua từng món trong giỏ để tạo Chi tiết hợp đồng
             foreach (var productId in cartItems)
             {
                 var product = await _context.Products.FindAsync(productId);
                 if (product == null) continue;
 
-                var contract = new RentalContract
+                var detail = new RentalContractDetail
                 {
-                    ContractCode = "HD" + DateTime.Now.Ticks, // Mã hóa đơn duy nhất
-                    CustomerId = currentUserId,               // SỬA TỪ 1 THÀNH ID THẬT NÈ VÂN
-                    CreatedAt = DateTime.Now,
-                    Status = "PendingDeposit",                // Trạng thái chờ đặt cọc
-                    StartDate = DateTime.Now,
-                    ExpectedReturnDate = DateTime.Now.AddDays(3),
-                    TotalAmount = product.RentalPricePerDay * 3, // Giả sử mặc định thuê 3 ngày
-                    DepositRequired = product.Deposit
+                    ProductId = productId,
+                    Quantity = 1,
+                    SelectedSize = product.Size ?? "M", // Fix lỗi Null nếu size trống
+                    NumberOfDays = 3,
+                    SnapshotUnitPrice = product.RentalPricePerDay,
+                    SubTotal = product.RentalPricePerDay * 3
                 };
 
-                _context.RentalContracts.Add(contract);
+                contract.RentalContractDetails.Add(detail);
+                totalRentalPrice += detail.SubTotal;
+                totalDeposit += product.Deposit;
+            }
+
+            contract.SubTotal = totalRentalPrice;
+            contract.TotalAmount = totalRentalPrice - discountAmount;
+            contract.DepositRequired = totalDeposit;
+
+            _context.RentalContracts.Add(contract);
+
+            // Bước D.3: Cập nhật số lượt dùng mã giảm giá
+            if (promotionId.HasValue)
+            {
+                var promo = await _context.Promotions.FindAsync(promotionId.Value);
+                if (promo != null)
+                {
+                    promo.UsedCount += 1;
+                    _context.Update(promo);
+                }
             }
 
             await _context.SaveChangesAsync();
 
-            // 🧹 Bước E: Xóa giỏ hàng sau khi đặt thành công
+            // 🧹 Bước E: Xóa giỏ hàng
             HttpContext.Session.Remove("Cart");
 
-            // Chuyển khách về trang "Hóa đơn của tôi" để họ xem đơn vừa đặt
             return RedirectToAction("MyContracts", "RentalContract");
         }
 
-        // 🗑️ 4. Xóa giỏ hàng (Nếu cần)
+        // 🗑️ 4. Xóa giỏ hàng
         public IActionResult ClearCart()
         {
             HttpContext.Session.Remove("Cart");

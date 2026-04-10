@@ -17,16 +17,27 @@ namespace ChoThueQuanAo.Controllers
         }
 
         // ==========================================================
-        // DÀNH CHO TẤT CẢ MỌI NGƯỜI
+        // DÀNH CHO TẤT CẢ MỌI NGƯỜI (Xem hàng & Tìm kiếm)
         // ==========================================================
 
         [AllowAnonymous]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString)
         {
-            var products = await _context.Products
-                .Include(p => p.Category)
-                .ToListAsync();
-            return View(products);
+            // Lưu lại từ khóa tìm kiếm để hiển thị lại trên thanh tìm kiếm ở View
+            ViewData["CurrentFilter"] = searchString;
+
+            // Lấy danh sách sản phẩm kèm theo thông tin Danh mục
+            var products = from p in _context.Products.Include(p => p.Category)
+                           select p;
+
+            // Thực hiện lọc nếu người dùng có nhập từ khóa
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                products = products.Where(p => p.Name.Contains(searchString) 
+                                            || p.ProductCode.Contains(searchString));
+            }
+
+            return View(await products.ToListAsync());
         }
 
         [AllowAnonymous]
@@ -44,11 +55,11 @@ namespace ChoThueQuanAo.Controllers
         // CÁC CHỨC NĂNG QUẢN TRỊ - CHỈ DÀNH CHO ADMIN
         // ==========================================================
 
-        // 1. GET: Tạo sản phẩm mới
+        // 1. GET: Tạo sản phẩm mới (Đã nạp danh mục để click chọn)
         [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
-            // Nạp danh mục vào ViewBag để hiển thị dropdown
+            // Load danh sách danh mục vào ViewBag để dropdown ở View hiển thị được
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name");
             return View();
         }
@@ -65,28 +76,24 @@ namespace ChoThueQuanAo.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            // Nếu có lỗi, phải nạp lại danh mục để dropdown không bị trống
+            // Nếu có lỗi, nạp lại danh mục để dropdown không bị trống
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
             return View(product);
         }
 
-        // 3. GET: Chỉnh sửa sản phẩm (FIXED: Đã nạp danh mục)
+        // 3. GET: Chỉnh sửa sản phẩm (Đã nạp danh mục để chọn lại)
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id)
         {
             var product = await _context.Products.FindAsync(id);
-            if (product == null)
-            {
-                return NotFound();
-            }
+            if (product == null) return NotFound();
 
-            // DÒNG QUAN TRỌNG: Lấy danh sách từ database nạp vào SelectList để hiện dropdown
+            // Cực kỳ quan trọng: Nạp danh mục để dropdown "Sửa sản phẩm" hiển thị dữ liệu
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
-            
             return View(product);
         }
 
-        // 4. POST: Cập nhật sản phẩm (FIXED: Đã nạp lại danh mục nếu lỗi)
+        // 4. POST: Cập nhật sản phẩm
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
@@ -108,10 +115,8 @@ namespace ChoThueQuanAo.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-
-            // DÒNG QUAN TRỌNG: Nếu lưu thất bại (ModelState không hợp lệ), phải nạp lại danh mục
+            // Nạp lại danh mục nếu lưu thất bại để tránh lỗi dropdown trống
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
-            
             return View(product);
         }
 

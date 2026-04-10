@@ -3,10 +3,7 @@ using ChoThueQuanAo.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace ChoThueQuanAo.Controllers
 {
@@ -20,15 +17,15 @@ namespace ChoThueQuanAo.Controllers
         }
 
         // ==========================================================
-        // QUYỀN ADMIN: QUẢN LÝ TOÀN BỘ HỆ THỐNG
+        // 1. DÀNH CHO ADMIN: Xem toàn bộ hợp đồng hệ thống
         // ==========================================================
-
-        // Xem tất cả hóa đơn của mọi khách hàng
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Index()
         {
             var contracts = await _context.RentalContracts
                 .Include(r => r.Customer)
+                .Include(r => r.Promotion)
+                // BỔ SUNG: Include sản phẩm để trang Index cũng có thể hiện tên đồ nếu cần
                 .Include(r => r.RentalContractDetails!)
                     .ThenInclude(d => d.Product)
                 .OrderByDescending(r => r.CreatedAt)
@@ -37,148 +34,84 @@ namespace ChoThueQuanAo.Controllers
             return View(contracts);
         }
 
-        // Xem chi tiết bất kỳ hóa đơn nào
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Details(int id)
-        {
-            var contract = await _context.RentalContracts
-                .Include(r => r.Customer)
-                .Include(r => r.RentalContractDetails!)
-                    .ThenInclude(d => d.Product)
-                .FirstOrDefaultAsync(r => r.Id == id);
-
-            if (contract == null) return NotFound();
-
-            return View(contract);
-        }
-
-        // Xóa hóa đơn (Chỉ Admin mới có quyền này)
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var contract = await _context.RentalContracts
-                .Include(r => r.Customer)
-                .FirstOrDefaultAsync(m => m.Id == id);
-
-            if (contract == null) return NotFound();
-
-            return View(contract);
-        }
-
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var contract = await _context.RentalContracts.FindAsync(id);
-            if (contract != null)
-            {
-                _context.RentalContracts.Remove(contract);
-                await _context.SaveChangesAsync();
-            }
-            return RedirectToAction(nameof(Index));
-        }
-
         // ==========================================================
-        // QUYỀN CUSTOMER: CHỈ XEM VÀ QUẢN LÝ CỦA CÁ NHÂN
+        // 2. DÀNH CHO KHÁCH HÀNG: Xem hợp đồng của cá nhân
         // ==========================================================
-
-        // Xem danh sách hóa đơn của chính mình (ĐÃ SỬA LỖI ID)
         [Authorize(Roles = "Customer")]
         public async Task<IActionResult> MyContracts()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
 
-            int currentUserId = int.Parse(userIdClaim);
+            int userId = int.Parse(userIdClaim);
 
             var contracts = await _context.RentalContracts
-                .Include(r => r.RentalContractDetails!)
-                    .ThenInclude(d => d.Product)
-                .Where(r => r.CustomerId == currentUserId) // Lọc đúng ID người dùng đang đăng nhập
+                .Include(r => r.Promotion)
+                .Include(r => r.RentalContractDetails!) // BỔ SUNG: Nạp chi tiết sản phẩm
+                    .ThenInclude(d => d.Product)       // BỔ SUNG: Nạp thông tin sản phẩm
+                .Where(r => r.CustomerId == userId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            return View(contracts);
+            return View("Index", contracts);
         }
 
-        // Xem chi tiết hóa đơn cá nhân (Bảo mật: Không xem được đơn của người khác)
-        [Authorize(Roles = "Customer")]
-        public async Task<IActionResult> MyDetails(int id)
+        // ==========================================================
+        // 3. CHI TIẾT HỢP ĐỒNG (Fix lỗi không hiện tên sản phẩm)
+        // ==========================================================
+        [Authorize]
+        public async Task<IActionResult> Details(int id)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
-
-            int currentUserId = int.Parse(userIdClaim);
-
             var contract = await _context.RentalContracts
+                .Include(r => r.Customer)
+                .Include(r => r.Promotion)
                 .Include(r => r.RentalContractDetails!)
-                    .ThenInclude(d => d.Product)
-                .FirstOrDefaultAsync(r => r.Id == id && r.CustomerId == currentUserId);
+                    .ThenInclude(d => d.Product) // Đã có: Đảm bảo hiện tên sản phẩm
+                .FirstOrDefaultAsync(m => m.Id == id);
 
             if (contract == null) return NotFound();
+
+            if (!User.IsInRole("Admin"))
+            {
+                var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userIdClaim == null || contract.CustomerId != int.Parse(userIdClaim)) 
+                    return Forbid();
+            }
 
             return View(contract);
         }
 
-        // Tạo hóa đơn thuê đồ (Dành cho Customer)
-        [Authorize(Roles = "Customer")]
-        public IActionResult Create(int productId)
+        // ==========================================================
+        // 4. LOGIC TÍNH TOÁN (Khuyến mãi & Ngày trả)
+        // ==========================================================
+        
+        [HttpPost]
+        public async Task<IActionResult> ApplyDiscount(string promoCode, decimal subTotal)
         {
-            ViewBag.ProductId = productId;
-            return View();
+            var promo = await _context.Promotions
+                .FirstOrDefaultAsync(p => p.Code.ToLower() == promoCode.ToLower() && p.IsActive);
+
+            if (promo == null) return Json(new { success = false, message = "Mã không tồn tại hoặc đã hết hạn." });
+            
+            // Tính số tiền giảm dựa trên loại giảm giá (Phần trăm hoặc Tiền mặt)
+            decimal discount = 0;
+            if (promo.DiscountType == "Percent")
+            {
+                discount = subTotal * (promo.DiscountValue / 100);
+            }
+            else
+            {
+                discount = promo.DiscountValue;
+            }
+            
+            return Json(new { success = true, discountAmount = discount, promoId = promo.Id });
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Customer")]
-        public async Task<IActionResult> Create(int productId, DateTime startDate, DateTime expectedReturnDate)
+        // Hàm hỗ trợ tính ngày trả dự kiến (Dùng để tư vấn cho khách)
+        public IActionResult GetExpectedReturnDate(int days = 3)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim)) return Unauthorized();
-
-            int userId = int.Parse(userIdClaim);
-            var product = await _context.Products.FindAsync(productId);
-
-            if (product == null) return NotFound();
-
-            int days = (expectedReturnDate.Date - startDate.Date).Days;
-            if (days <= 0)
-            {
-                ModelState.AddModelError("", "Ngày trả phải sau ngày thuê.");
-                ViewBag.ProductId = productId;
-                return View();
-            }
-
-            var contract = new RentalContract
-            {
-                ContractCode = "RC" + DateTime.Now.ToString("yyyyMMddHHmmss"),
-                CustomerId = userId, // Tự động gán ID từ người đăng nhập
-                StartDate = startDate,
-                ExpectedReturnDate = expectedReturnDate,
-                Status = "PendingDeposit",
-                TotalAmount = product.RentalPricePerDay * days,
-                DepositRequired = product.Deposit,
-                CreatedAt = DateTime.Now
-            };
-
-            _context.RentalContracts.Add(contract);
-            await _context.SaveChangesAsync();
-
-            var detail = new RentalContractDetail
-            {
-                RentalContractId = contract.Id,
-                ProductId = product.Id,
-                Quantity = 1,
-                NumberOfDays = days,
-                SnapshotUnitPrice = product.RentalPricePerDay,
-                SubTotal = product.RentalPricePerDay * days
-            };
-
-            _context.RentalContractDetails.Add(detail);
-            await _context.SaveChangesAsync();
-
-            return RedirectToAction(nameof(MyContracts));
+            var returnDate = DateTime.Now.AddDays(days);
+            return Json(new { returnDate = returnDate.ToString("dd/MM/yyyy") });
         }
     }
 }

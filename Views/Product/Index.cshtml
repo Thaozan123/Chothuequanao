@@ -2,15 +2,40 @@
 
 @{
     ViewData["Title"] = "Danh sách sản phẩm";
+    string currentFilter = ViewData["CurrentFilter"]?.ToString() ?? "";
+    bool isAdmin = User.IsInRole("Admin");
 }
 
 <h2 class="mb-3">Danh sách sản phẩm</h2>
 
-<p>
-    <a asp-action="Create" class="btn btn-primary">+ Thêm sản phẩm</a>
-</p>
+<div class="d-flex justify-content-between mb-3">
+    @* --- NÚT THÊM SẢN PHẨM (CHỈ ADMIN THẤY) --- *@
+    <div>
+        @if (isAdmin)
+        {
+            <a asp-action="Create" class="btn btn-primary shadow-sm">
+                <i class="fas fa-plus me-1"></i> Thêm sản phẩm
+            </a>
+        }
+    </div>
 
-<table class="table table-bordered table-striped table-hover">
+    @* --- THANH TÌM KIẾM --- *@
+    <form asp-action="Index" method="get" class="d-flex border p-2 rounded bg-light shadow-sm">
+        <input type="text" name="searchString" class="form-control me-2" 
+               placeholder="Tìm theo tên hoặc mã..." 
+               style="width: 300px;"
+               value="@currentFilter" />
+        <button type="submit" class="btn btn-info text-white">
+            <i class="fas fa-search"></i> Tìm kiếm
+        </button>
+        @if (!string.IsNullOrEmpty(currentFilter))
+        {
+            <a asp-action="Index" class="btn btn-link py-1">Xóa lọc</a>
+        }
+    </form>
+</div>
+
+<table class="table table-bordered table-striped table-hover shadow-sm">
     <thead class="table-dark">
         <tr>
             <th>Mã</th>
@@ -21,7 +46,7 @@
             <th>Giá/ngày</th>
             <th>Cọc</th>
             <th>Tồn kho</th>
-            <th>Chức năng</th>
+            <th class="text-center">Chức năng</th>
         </tr>
     </thead>
 
@@ -31,34 +56,44 @@
             foreach (var item in Model)
             {
                 <tr>
-                    <td>@item.ProductCode</td>
+                    <td class="fw-bold text-primary">@item.ProductCode</td>
                     <td>@item.Name</td>
-                    <td>@item.Category?.Name</td>
+                    <td><span class="badge bg-info text-dark">@item.Category?.Name</span></td>
                     <td>@item.Color</td>
-                    <td>@item.Size</td>
-                    <td>@item.RentalPricePerDay</td>
-                    <td>@item.Deposit</td>
-                    <td>@item.StockQuantity</td>
+                    <td class="text-center">@item.Size</td>
+                    <td>@item.RentalPricePerDay.ToString("N0") đ</td>
+                    <td>@item.Deposit.ToString("N0") đ</td>
+                    <td class="text-center">@item.StockQuantity</td>
 
-                    <td>
-                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm">Xem</a>
-                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Sửa</a>
-                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Xóa</a>
+                    <td class="text-center">
+                        <div class="btn-group">
+                            @* Nút Xem: Tất cả mọi người đều thấy *@
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm text-white">Xem</a>
 
-                        <!-- 🛒 GIỎ HÀNG -->
-                        @if (item.StockQuantity > 0)
-                        {
-                            <a class="btn btn-success btn-sm"
-                               asp-controller="Cart"
-                               asp-action="AddToCart"
-                               asp-route-productId="@item.Id">
-                                🛒 Thêm
-                            </a>
-                        }
-                        else
-                        {
-                            <span class="text-danger">Hết hàng</span>
-                        }
+                            @if (isAdmin)
+                            {
+                                @* PHẦN DÀNH CHO ADMIN *@
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-warning btn-sm">Sửa</a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-danger btn-sm">Xóa</a>
+                            }
+                            else
+                            {
+                                @* PHẦN DÀNH CHO KHÁCH HÀNG *@
+                                @if (item.StockQuantity > 0)
+                                {
+                                    <a class="btn btn-success btn-sm"
+                                       asp-controller="Cart"
+                                       asp-action="AddToCart"
+                                       asp-route-productId="@item.Id">
+                                        <i class="fas fa-shopping-cart"></i> Thuê
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger d-flex align-items-center ms-1">Hết hàng</span>
+                                }
+                            }
+                        </div>
                     </td>
                 </tr>
             }
@@ -66,8 +101,13 @@
         else
         {
             <tr>
-                <td colspan="9" class="text-center">Chưa có sản phẩm nào</td>
+                <td colspan="9" class="text-center py-4 text-muted">
+                    @(string.IsNullOrEmpty(currentFilter) ? "Chưa có sản phẩm nào" : "Không tìm thấy sản phẩm khớp với từ khóa")
+                </td>
             </tr>
         }
     </tbody>
 </table>
+
+@* Link icon FontAwesome *@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />

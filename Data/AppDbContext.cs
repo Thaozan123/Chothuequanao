@@ -20,6 +20,7 @@ namespace ChoThueQuanAo.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // 1. Cấu hình Quan hệ cho RentalContract (Hợp đồng)
             modelBuilder.Entity<RentalContract>()
                 .HasOne(rc => rc.Customer)
                 .WithMany(u => u.CustomerContracts)
@@ -38,6 +39,7 @@ namespace ChoThueQuanAo.Data
                 .HasForeignKey(rc => rc.PromotionId)
                 .OnDelete(DeleteBehavior.NoAction);
 
+            // 2. Cấu hình Quan hệ cho RentalContractDetail (Chi tiết hợp đồng)
             modelBuilder.Entity<RentalContractDetail>()
                 .HasOne(d => d.RentalContract)
                 .WithMany(rc => rc.RentalContractDetails)
@@ -49,6 +51,36 @@ namespace ChoThueQuanAo.Data
                 .WithMany(p => p.RentalContractDetails)
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            // 3. CẤU HÌNH ĐỘ CHÍNH XÁC CHO TIỀN TỆ (BỔ SUNG QUAN TRỌNG)
+            // Giúp tránh lỗi làm tròn khi tính toán tiền thuê và khuyến mãi
+            
+            // Bảng Product
+            modelBuilder.Entity<Product>(entity => {
+                entity.Property(e => e.RentalPricePerDay).HasPrecision(18, 2);
+                entity.Property(e => e.Deposit).HasPrecision(18, 2);
+                entity.Property(e => e.LateFeePerDay).HasPrecision(18, 2);
+            });
+
+            // Bảng Promotion
+            modelBuilder.Entity<Promotion>(entity => {
+                entity.Property(e => e.DiscountValue).HasPrecision(18, 2);
+                entity.Property(e => e.MinOrderAmount).HasPrecision(18, 2);
+            });
+
+            // Bảng RentalContract
+            modelBuilder.Entity<RentalContract>(entity => {
+                entity.Property(e => e.SubTotal).HasPrecision(18, 2);
+                entity.Property(e => e.DiscountAmount).HasPrecision(18, 2);
+                entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
+                entity.Property(e => e.DepositRequired).HasPrecision(18, 2);
+            });
+
+            // Bảng RentalContractDetail
+            modelBuilder.Entity<RentalContractDetail>(entity => {
+                entity.Property(e => e.SnapshotUnitPrice).HasPrecision(18, 2);
+                entity.Property(e => e.SubTotal).HasPrecision(18, 2);
+            });
         }
     }
 }

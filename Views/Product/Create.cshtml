@@ -2,89 +2,115 @@
 @using ChoThueQuanAo.Models
 
 @{
-    ViewData["Title"] = "Thêm sản phẩm";
-    var categories = ViewBag.Categories as List<ProductCategory> ?? new List<ProductCategory>();
+    ViewData["Title"] = "Thêm sản phẩm mới";
 }
 
-<h2>Thêm sản phẩm</h2>
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h2 class="mb-0">Thêm sản phẩm mới</h2>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-<form asp-action="Create" method="post">
-    <div class="mb-3">
-        <label asp-for="ProductCode" class="form-label">Mã sản phẩm</label>
-        <input asp-for="ProductCode" class="form-control" />
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="ProductCode" class="form-label font-weight-bold">Mã sản phẩm</label>
+                        <input asp-for="ProductCode" class="form-control" placeholder="Ví dụ: V01, AD02..." />
+                        <span asp-validation-for="ProductCode" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Name" class="form-label font-weight-bold">Tên sản phẩm</label>
+                        <input asp-for="Name" class="form-control" placeholder="Nhập tên sản phẩm" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="CategoryId" class="form-label font-weight-bold">Danh mục sản phẩm</label>
+                    @* FIXED: Đoạn này giúp hiện danh sách danh mục để bạn click chọn *@
+                    <select asp-for="CategoryId" class="form-control" asp-items="ViewBag.CategoryId">
+                        <option value="">-- Click để chọn danh mục --</option>
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label font-weight-bold">Mô tả sản phẩm</label>
+                    <textarea asp-for="Description" class="form-control" rows="3" placeholder="Mô tả chi tiết về sản phẩm..."></textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Color" class="form-label">Màu sắc</label>
+                        <input asp-for="Color" class="form-control" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Material" class="form-label">Chất liệu</label>
+                        <input asp-for="Material" class="form-control" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Size" class="form-label">Size</label>
+                        <select asp-for="Size" class="form-control">
+                            <option value="XS">XS</option>
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">XXL</option>
+                            <option value="FreeSize">FreeSize</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="RentalPricePerDay" class="form-label">Giá thuê / ngày (VNĐ)</label>
+                        <input asp-for="RentalPricePerDay" class="form-control" type="number" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="LateFeePerDay" class="form-label">Phí trễ / ngày (VNĐ)</label>
+                        <input asp-for="LateFeePerDay" class="form-control" type="number" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="Deposit" class="form-label">Tiền cọc (VNĐ)</label>
+                        <input asp-for="Deposit" class="form-control" type="number" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="ImageUrl" class="form-label font-weight-bold">Link hình ảnh</label>
+                    <input asp-for="ImageUrl" class="form-control" placeholder="https://..." />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="Status" class="form-label">Trạng thái ban đầu</label>
+                        <select asp-for="Status" class="form-control">
+                            <option value="Available">Sẵn sàng cho thuê (Available)</option>
+                            <option value="Cleaning">Đang giặt ủi (Cleaning)</option>
+                            <option value="Maintenance">Đang sửa chữa (Maintenance)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="StockQuantity" class="form-label">Số lượng tồn kho</label>
+                        <input asp-for="StockQuantity" class="form-control" type="number" value="1" />
+                    </div>
+                </div>
+
+                <div class="mt-4 border-top pt-3">
+                    <button type="submit" class="btn btn-primary px-5">
+                        <i class="fas fa-plus-circle"></i> Lưu sản phẩm
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary px-4">Hủy bỏ</a>
+                </div>
+            </form>
+        </div>
     </div>
+</div>
 
-    <div class="mb-3">
-        <label asp-for="Name" class="form-label">Tên sản phẩm</label>
-        <input asp-for="Name" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="CategoryId" class="form-label">Danh mục</label>
-        <select asp-for="CategoryId" class="form-control">
-            <option value="">-- Chọn danh mục --</option>
-            @foreach (var c in categories)
-            {
-                <option value="@c.Id">@c.Name</option>
-            }
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="Description" class="form-label">Mô tả</label>
-        <textarea asp-for="Description" class="form-control"></textarea>
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="Color" class="form-label">Màu sắc</label>
-        <input asp-for="Color" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="Material" class="form-label">Chất liệu</label>
-        <input asp-for="Material" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="Size" class="form-label">Size</label>
-        <input asp-for="Size" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="RentalPricePerDay" class="form-label">Giá thuê/ngày</label>
-        <input asp-for="RentalPricePerDay" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="LateFeePerDay" class="form-label">Phí trễ/ngày</label>
-        <input asp-for="LateFeePerDay" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="Deposit" class="form-label">Tiền cọc</label>
-        <input asp-for="Deposit" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="ImageUrl" class="form-label">Link hình ảnh</label>
-        <input asp-for="ImageUrl" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="Status" class="form-label">Trạng thái</label>
-        <select asp-for="Status" class="form-control">
-            <option value="Available">Available</option>
-            <option value="Rented">Rented</option>
-            <option value="Maintenance">Maintenance</option>
-            <option value="Unavailable">Unavailable</option>
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="StockQuantity" class="form-label">Tồn kho</label>
-        <input asp-for="StockQuantity" class="form-control" />
-    </div>
-
-    <button type="submit" class="btn btn-success">Lưu</button>
-    <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
-</form>
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
