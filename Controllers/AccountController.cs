@@ -20,20 +20,16 @@ namespace ChoThueQuanAo.Controllers
         }
 
         [AllowAnonymous]
-        public IActionResult Register()
-        {
-            return View();
-        }
+        public IActionResult Register() => View();
 
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            if (!ModelState.IsValid) return View(model);
 
-            // Kiểm tra trùng lặp cả Email và Số điện thoại
+            // Kiểm tra trùng lặp Email hoặc Số điện thoại
             var existingUser = await _context.Users
                 .AnyAsync(x => x.Email == model.Email || x.Phone == model.Phone);
 
@@ -47,10 +43,10 @@ namespace ChoThueQuanAo.Controllers
             {
                 FullName = model.FullName,
                 Email = model.Email,
-                Phone = model.Phone, // Lưu SĐT để sau này đăng nhập
+                Phone = model.Phone,
                 Address = model.Address,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
-                Role = "Customer", // Mặc định là khách hàng
+                Role = "Customer", // Mặc định khi đăng ký luôn là Khách hàng
                 IsActive = true,
                 CreatedAt = DateTime.Now
             };
@@ -63,69 +59,59 @@ namespace ChoThueQuanAo.Controllers
         }
 
         [AllowAnonymous]
-        public IActionResult Login()
-        {
-            return View();
-        }
+        public IActionResult Login() => View();
 
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            if (!ModelState.IsValid) return View(model);
 
-            // LOGIC QUAN TRỌNG: Tìm user bằng Email HOẶC Số điện thoại
+            // Tìm user theo Email hoặc Số điện thoại
             var user = await _context.Users
                 .FirstOrDefaultAsync(x => (x.Email == model.Email || x.Phone == model.Email) && x.IsActive);
 
-            if (user == null)
+            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
             {
-                ModelState.AddModelError("", "Tài khoản không tồn tại hoặc đã bị khóa.");
+                ModelState.AddModelError("", "Thông tin đăng nhập không chính xác hoặc tài khoản bị khóa.");
                 return View(model);
             }
 
-            // Kiểm tra mật khẩu mã hóa BCrypt
-            bool isValidPassword = BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash);
-
-            if (!isValidPassword)
-            {
-                ModelState.AddModelError("", "Thông tin đăng nhập không chính xác.");
-                return View(model);
-            }
-
-            // Tạo danh sách Claim (Thông tin định danh)
+            // --- THIẾT LẬP PHÂN QUYỀN (CLAIMS) ---
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.FullName),
+                // NameIdentifier lưu ID để các Controller khác bốc ra dùng (Sửa lỗi kẹt ID số 1)
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), 
+                new Claim(ClaimTypes.Name, user.FullName ?? ""),
                 new Claim(ClaimTypes.Email, user.Email ?? ""),
-                new Claim("Phone", user.Phone ?? ""),
-                new Claim(ClaimTypes.Role, user.Role) // Lưu Role để phân quyền [Authorize(Roles="...")]
+                new Claim(ClaimTypes.Role, user.Role) // Chỉ còn Admin hoặc Customer
             };
 
-            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme, ClaimTypes.Name, ClaimTypes.Role);
             var principal = new ClaimsPrincipal(identity);
 
-            // Đăng nhập vào hệ thống (Lưu Cookie)
+            // Xóa phiên cũ trước khi đăng nhập mới
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 principal,
                 new AuthenticationProperties
                 {
                     IsPersistent = true, // Ghi nhớ đăng nhập
-                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7) // Hết hạn sau 7 ngày
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
                 }
             );
 
-            // Phân hướng trang sau khi đăng nhập thành công
-            if (user.Role == "Admin" || user.Role == "Staff")
+            // --- ĐIỀU HƯỚNG THEO QUYỀN MỚI ---
+            if (user.Role == "Admin")
             {
-                // Nếu là Admin/Staff thì vào trang quản lý (tùy bạn đặt tên Controller)
-                return RedirectToAction("Index", "Category"); 
+                // Admin nắm toàn quyền, vào thẳng trang quản lý hợp đồng tổng
+                return RedirectToAction("Index", "RentalContract");
             }
 
+            // Khách hàng (Customer) về trang chủ mua sắm
             return RedirectToAction("Index", "Home");
         }
 
@@ -137,32 +123,26 @@ namespace ChoThueQuanAo.Controllers
         }
 
         [AllowAnonymous]
-        public IActionResult ForgotPassword()
-        {
-            return View();
-        }
+        public IActionResult ForgotPassword() => View();
 
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            if (!ModelState.IsValid) return View(model);
 
-            // Cho phép tìm tài khoản để lấy lại MK bằng Email hoặc SĐT
             var user = await _context.Users
                 .FirstOrDefaultAsync(x => (x.Email == model.Email || x.Phone == model.Email) && x.IsActive);
 
             if (user == null)
             {
-                ModelState.AddModelError("", "Không tìm thấy tài khoản tương ứng.");
+                ModelState.AddModelError("", "Không tìm thấy tài khoản.");
                 return View(model);
             }
 
-            // Cập nhật mật khẩu mới
+            // Cập nhật mật khẩu mới (đã hash)
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
-
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
@@ -173,6 +153,7 @@ namespace ChoThueQuanAo.Controllers
         [AllowAnonymous]
         public IActionResult AccessDenied()
         {
+            // Trang hiển thị khi Customer cố tình vào link của Admin
             return View();
         }
     }

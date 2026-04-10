@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using ChoThueQuanAo.Data;
 using ChoThueQuanAo.Models;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ChoThueQuanAo.Controllers
 {
@@ -13,7 +15,7 @@ namespace ChoThueQuanAo.Controllers
             _context = context;
         }
 
-        // 🛒 Thêm vào giỏ
+        // 🛒 1. Thêm sản phẩm vào giỏ hàng (Lưu trong Session)
         public IActionResult AddToCart(int productId)
         {
             var cart = HttpContext.Session.GetString("Cart");
@@ -29,7 +31,7 @@ namespace ChoThueQuanAo.Controllers
             return RedirectToAction("Index", "Product");
         }
 
-        // 🛒 Xem giỏ (HIỂN THỊ SẢN PHẨM THẬT)
+        // 🛒 2. Xem danh sách giỏ hàng
         public IActionResult Index()
         {
             var cart = HttpContext.Session.GetString("Cart");
@@ -45,36 +47,63 @@ namespace ChoThueQuanAo.Controllers
             return View(products);
         }
 
-        // 🔥 THUÊ TẤT CẢ
-        public IActionResult Checkout()
+        // 🔥 3. XỬ LÝ THANH TOÁN (CHECKOUT) - ĐÃ SỬA LỖI ID
+        [Authorize] // Bắt buộc khách phải đăng nhập mới được thuê đồ
+        public async Task<IActionResult> Checkout()
         {
+            // Bước A: Lấy giỏ hàng từ Session
             var cart = HttpContext.Session.GetString("Cart");
+            if (string.IsNullOrEmpty(cart))
+            {
+                return RedirectToAction("Index", "Product");
+            }
 
-            List<int> cartItems = string.IsNullOrEmpty(cart)
-                ? new List<int>()
-                : cart.Split(',').Select(int.Parse).ToList();
+            // Bước B: Lấy ID của người dùng đang đăng nhập thực tế
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                return RedirectToAction("Login", "Account");
+            }
+            int currentUserId = int.Parse(userIdClaim);
 
+            // Bước C: Chuyển chuỗi ID từ Session thành List
+            List<int> cartItems = cart.Split(',').Select(int.Parse).ToList();
+
+            // Bước D: Tạo hợp đồng dựa trên ID người dùng thật
             foreach (var productId in cartItems)
             {
+                var product = await _context.Products.FindAsync(productId);
+                if (product == null) continue;
+
                 var contract = new RentalContract
                 {
-                    ContractCode = "HD" + DateTime.Now.Ticks,
-                    CustomerId = 1,
+                    ContractCode = "HD" + DateTime.Now.Ticks, // Mã hóa đơn duy nhất
+                    CustomerId = currentUserId,               // SỬA TỪ 1 THÀNH ID THẬT NÈ VÂN
                     CreatedAt = DateTime.Now,
-                    Status = "PendingDeposit",
+                    Status = "PendingDeposit",                // Trạng thái chờ đặt cọc
                     StartDate = DateTime.Now,
-                    ExpectedReturnDate = DateTime.Now.AddDays(3)
+                    ExpectedReturnDate = DateTime.Now.AddDays(3),
+                    TotalAmount = product.RentalPricePerDay * 3, // Giả sử mặc định thuê 3 ngày
+                    DepositRequired = product.Deposit
                 };
 
                 _context.RentalContracts.Add(contract);
             }
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
-            // 🧹 clear giỏ
+            // 🧹 Bước E: Xóa giỏ hàng sau khi đặt thành công
             HttpContext.Session.Remove("Cart");
 
-            return RedirectToAction("Index", "RentalContract");
+            // Chuyển khách về trang "Hóa đơn của tôi" để họ xem đơn vừa đặt
+            return RedirectToAction("MyContracts", "RentalContract");
+        }
+
+        // 🗑️ 4. Xóa giỏ hàng (Nếu cần)
+        public IActionResult ClearCart()
+        {
+            HttpContext.Session.Remove("Cart");
+            return RedirectToAction("Index");
         }
     }
 }

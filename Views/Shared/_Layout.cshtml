@@ -33,12 +33,26 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Product" asp-action="Index">Sản phẩm</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Category" asp-action="Index">Danh mục SP</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="RentalContract" asp-action="Index">Hợp đồng</a>
-                        </li>
+
+                        @* PHẦN SỬA LỖI PHÂN QUYỀN Ở ĐÂY *@
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        {
+                            @if (User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Manager"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Category" asp-action="Index">Danh mục SP</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-primary fw-bold" asp-controller="RentalContract" asp-action="Index">Quản lý Hợp đồng</a>
+                                </li>
+                            }
+                            else if (User.IsInRole("Customer"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-success fw-bold" asp-controller="RentalContract" asp-action="MyContracts">Hợp đồng của tôi</a>
+                                </li>
+                            }
+                        }
                     </ul>
 
                     <ul class="navbar-nav align-items-center">

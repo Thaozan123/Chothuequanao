@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ChoThueQuanAo.Controllers
 {
-    // Chỉ có Staff mới được phép vào Controller này để quản lý danh mục
-    [Authorize(Roles = "Staff")] 
+    // CHỈ CÒN ADMIN mới được phép vào Controller này để quản lý danh mục
+    [Authorize(Roles = "Admin")] 
     public class CategoryController : Controller
     {
         private readonly AppDbContext _context;
@@ -17,7 +17,7 @@ namespace ChoThueQuanAo.Controllers
             _context = context;
         }
 
-        // 1. Xem danh sách danh mục
+        // 1. Xem danh sách danh mục (Admin dùng để quản lý)
         public async Task<IActionResult> Index()
         {
             var categories = await _context.ProductCategories.ToListAsync();

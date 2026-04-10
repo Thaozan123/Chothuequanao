@@ -2,7 +2,7 @@ using ChoThueQuanAo.Data;
 using ChoThueQuanAo.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering; // Thêm để dùng SelectList cho Dropdown Category
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChoThueQuanAo.Controllers
@@ -16,10 +16,14 @@ namespace ChoThueQuanAo.Controllers
             _context = context;
         }
 
-        // Khách hàng và mọi người đều được xem danh sách
+        // ==========================================================
+        // DÀNH CHO TẤT CẢ MỌI NGƯỜI (Giao diện mua sắm)
+        // ==========================================================
+
         [AllowAnonymous]
         public async Task<IActionResult> Index()
         {
+            // Hiển thị danh sách sản phẩm kèm theo tên danh mục
             var products = await _context.Products
                 .Include(p => p.Category)
                 .ToListAsync();
@@ -27,7 +31,6 @@ namespace ChoThueQuanAo.Controllers
             return View(products);
         }
 
-        // Khách hàng và mọi người đều được xem chi tiết
         [AllowAnonymous]
         public async Task<IActionResult> Details(int id)
         {
@@ -44,21 +47,22 @@ namespace ChoThueQuanAo.Controllers
         }
 
         // ==========================================================
-        // CÁC CHỨC NĂNG DÀNH RIÊNG CHO STAFF (QUẢN LÝ)
+        // CÁC CHỨC NĂNG QUẢN TRỊ - CHỈ DÀNH CHO ADMIN
         // ==========================================================
 
-        // GET: Create - Chỉ Staff
-        [Authorize(Roles = "Staff")]
+        // 1. GET: Tạo sản phẩm mới
+        [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
-            // Load danh mục sản phẩm để chọn khi tạo mới
+            // Load danh mục để Admin chọn khi tạo sản phẩm
             ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name");
             return View();
         }
 
+        // 2. POST: Lưu sản phẩm mới
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Staff")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(Product product)
         {
             if (ModelState.IsValid)
@@ -71,8 +75,8 @@ namespace ChoThueQuanAo.Controllers
             return View(product);
         }
 
-        // GET: Edit - Chỉ Staff
-        [Authorize(Roles = "Staff")]
+        // 3. GET: Chỉnh sửa sản phẩm
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -85,9 +89,10 @@ namespace ChoThueQuanAo.Controllers
             return View(product);
         }
 
+        // 4. POST: Cập nhật sản phẩm
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Staff")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id, Product product)
         {
             if (id != product.Id)
@@ -105,8 +110,8 @@ namespace ChoThueQuanAo.Controllers
             return View(product);
         }
 
-        // GET: Delete - Đã đổi từ Admin sang Staff theo ý bạn
-        [Authorize(Roles = "Staff")]
+        // 5. GET: Xóa sản phẩm
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var product = await _context.Products
@@ -121,10 +126,10 @@ namespace ChoThueQuanAo.Controllers
             return View(product);
         }
 
-        // POST: Delete - Đã đổi sang Staff
+        // 6. POST: Xác nhận xóa sản phẩm
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Staff")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var product = await _context.Products.FindAsync(id);
