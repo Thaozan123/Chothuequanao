@@ -1,0 +1,21 @@
+@model ChoThueQuanAo.Models.Supplier
+
+@{
+    ViewData["Title"] = "Chi tiết nhà cung cấp";
+}
+
+<h2>Chi tiết nhà cung cấp</h2>
+
+<div>
+    <p><strong>Tên:</strong> @Model.Name</p>
+    <p><strong>SĐT:</strong> @Model.Phone</p>
+    <p><strong>Email:</strong> @Model.Email</p>
+    <p><strong>Địa chỉ:</strong> @Model.Address</p>
+    <p><strong>Hoạt động:</strong> @Model.IsActive</p>
+    <p><strong>Ngày tạo:</strong> @Model.CreatedAt</p>
+</div>
+
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Sửa</a>
+    <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+</p>

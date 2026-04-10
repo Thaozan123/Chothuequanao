@@ -1,0 +1,57 @@
+@model IEnumerable<ChoThueQuanAo.Models.Supplier>
+
+@{
+    ViewData["Title"] = "Nhà cung cấp";
+}
+
+<h2>Danh sách nhà cung cấp</h2>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Thêm nhà cung cấp</a>
+</p>
+
+<form asp-action="Index" asp-controller="Supplier" method="get" class="mb-3 d-flex" style="gap: 8px;">
+    <input type="text"
+           name="keyword"
+           value="@ViewBag.Keyword"
+           class="form-control"
+           placeholder="Nhập tên nhà cung cấp..." style="max-width: 300px;" />
+    <button type="submit" class="btn btn-secondary">Tìm kiếm</button>
+    <a asp-action="Index" class="btn btn-light">Làm mới</a>
+</form>
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">
+        Không tìm thấy nhà cung cấp phù hợp.
+    </div>
+}
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Tên</th>
+            <th>SĐT</th>
+            <th>Email</th>
+            <th>Địa chỉ</th>
+            <th>Hoạt động</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Name</td>
+                <td>@item.Phone</td>
+                <td>@item.Email</td>
+                <td>@item.Address</td>
+                <td>@item.IsActive</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.Id">Chi tiết</a> |
+                    <a asp-action="Edit" asp-route-id="@item.Id">Sửa</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id">Xóa</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

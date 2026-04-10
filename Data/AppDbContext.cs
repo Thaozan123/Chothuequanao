@@ -1,11 +1,13 @@
 using ChoThueQuanAo.Models;
 using Microsoft.EntityFrameworkCore;
 
+
+
 namespace ChoThueQuanAo.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
 
@@ -16,6 +18,7 @@ namespace ChoThueQuanAo.Data
         public DbSet<RentalContractDetail> RentalContractDetails { get; set; }
         public DbSet<Promotion> Promotions { get; set; }
 
+        public DbSet<Supplier> Suppliers { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
