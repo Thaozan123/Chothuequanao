@@ -50,17 +50,34 @@ namespace ChoThueQuanAo.Controllers
         [HttpPost]
         public async Task<IActionResult> Checkout(int? promotionId, decimal discountAmount)
         {
+            // Bước A: Lấy giỏ hàng từ Session
             var cart = HttpContext.Session.GetString("Cart");
             if (string.IsNullOrEmpty(cart))
             {
                 return RedirectToAction("Index", "Product");
             }
 
-            // --- FIX LỖI GẠCH ĐỎ Ở ĐÂY ---
+            // Bước B: Lấy ID người dùng thực tế
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            // Sử dụng ?? "0" để đảm bảo không bao giờ bị null khi Parse
-            int currentUserId = int.Parse(userIdClaim ?? "0"); 
-            
+            int currentUserId = int.Parse(userIdClaim ?? "0");
+
+            // --- KIỂM TRA MÃ GIẢM GIÁ (DÀNH CHO KHÁCH MỚI) ---
+            if (promotionId.HasValue)
+            {
+                var promo = await _context.Promotions.FindAsync(promotionId.Value);
+                if (promo != null && promo.Code.ToUpper().Contains("WELCOME"))
+                {
+                    // Kiểm tra xem khách đã từng thuê món nào chưa
+                    bool hasOrderedBefore = await _context.RentalContracts.AnyAsync(c => c.CustomerId == currentUserId);
+                    if (hasOrderedBefore)
+                    {
+                        TempData["Error"] = "Mã WELCOME chỉ dành cho khách hàng mới lần đầu sử dụng!";
+                        return RedirectToAction("Index");
+                    }
+                }
+            }
+
+            // Bước C: Chuyển chuỗi ID thành List
             List<int> cartItems = cart.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
 
             // Bước D.1: Tạo đối tượng Hợp đồng tổng
@@ -90,7 +107,7 @@ namespace ChoThueQuanAo.Controllers
                 {
                     ProductId = productId,
                     Quantity = 1,
-                    SelectedSize = product.Size ?? "M", // Fix lỗi Null nếu size trống
+                    SelectedSize = product.Size ?? "M",
                     NumberOfDays = 3,
                     SnapshotUnitPrice = product.RentalPricePerDay,
                     SubTotal = product.RentalPricePerDay * 3
@@ -105,9 +122,10 @@ namespace ChoThueQuanAo.Controllers
             contract.TotalAmount = totalRentalPrice - discountAmount;
             contract.DepositRequired = totalDeposit;
 
+            // Lưu hợp đồng chính
             _context.RentalContracts.Add(contract);
 
-            // Bước D.3: Cập nhật số lượt dùng mã giảm giá
+            // Bước D.3: Cập nhật lượt dùng mã giảm giá
             if (promotionId.HasValue)
             {
                 var promo = await _context.Promotions.FindAsync(promotionId.Value);
@@ -126,7 +144,7 @@ namespace ChoThueQuanAo.Controllers
             return RedirectToAction("MyContracts", "RentalContract");
         }
 
-        // 🗑️ 4. Xóa giỏ hàng
+        // 🗑️ 4. Xóa sạch giỏ hàng
         public IActionResult ClearCart()
         {
             HttpContext.Session.Remove("Cart");
