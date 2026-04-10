@@ -4,6 +4,8 @@
     ViewData["Title"] = "Đăng nhập";
 }
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
 <h2>Đăng nhập</h2>
 
 @if (TempData["Success"] != null)
@@ -17,22 +19,48 @@
     <div asp-validation-summary="All" class="text-danger"></div>
 
     <div class="mb-3">
-        <label asp-for="Email" class="form-label">Email</label>
-        <input asp-for="Email" class="form-control" />
+        @* Đổi label thành Email hoặc SĐT cho người dùng dễ biết *@
+        <label asp-for="Email" class="form-label">Email hoặc Số điện thoại</label>
+        <input asp-for="Email" class="form-control" placeholder="Nhập email hoặc số điện thoại..." />
         <span asp-validation-for="Email" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
         <label asp-for="Password" class="form-label">Mật khẩu</label>
-        <input asp-for="Password" class="form-control" />
+        <div class="input-group">
+            <input asp-for="Password" type="password" id="passwordField" class="form-control" />
+            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                <i class="fa fa-eye" id="eyeIcon"></i>
+            </button>
+        </div>
         <span asp-validation-for="Password" class="text-danger"></span>
     </div>
 
-    <button type="submit" class="btn btn-success">Đăng nhập</button>
-    <a asp-action="Register" class="btn btn-primary">Đăng ký</a>
-    <a asp-action="ForgotPassword" class="btn btn-warning">Quên mật khẩu</a>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-success me-2">Đăng nhập</button>
+        <a asp-action="Register" class="btn btn-primary me-2">Đăng ký</a>
+        <a asp-action="ForgotPassword" class="btn btn-warning">Quên mật khẩu</a>
+    </div>
 </form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    
+    <script>
+        document.getElementById('togglePassword').addEventListener('click', function () {
+            const passwordField = document.getElementById('passwordField');
+            const eyeIcon = document.getElementById('eyeIcon');
+            
+            // Thay đổi type của input
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordField.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        });
+    </script>
 }

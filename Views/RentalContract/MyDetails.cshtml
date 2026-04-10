@@ -1,0 +1,48 @@
+@model ChoThueQuanAo.Models.RentalContract
+
+@{
+    ViewData["Title"] = "Chi tiết hợp đồng";
+}
+
+<h2>Chi tiết hợp đồng</h2>
+
+<p><strong>Mã hợp đồng:</strong> @Model.ContractCode</p>
+<p><strong>Ngày thuê:</strong> @Model.StartDate.ToString("dd/MM/yyyy")</p>
+<p><strong>Ngày trả dự kiến:</strong> @Model.ExpectedReturnDate.ToString("dd/MM/yyyy")</p>
+<p><strong>Trạng thái:</strong> @Model.Status</p>
+<p><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0")</p>
+<p><strong>Tiền cọc cần trả:</strong> @Model.DepositRequired.ToString("N0")</p>
+<p><strong>Tiền cọc đã trả:</strong> @Model.DepositPaid.ToString("N0")</p>
+
+<h4>Sản phẩm trong hợp đồng</h4>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Tên sản phẩm</th>
+            <th>Size</th>
+            <th>Số lượng</th>
+            <th>Số ngày thuê</th>
+            <th>Đơn giá/ngày</th>
+            <th>Thành tiền</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model.RentalContractDetails != null)
+        {
+            foreach (var item in Model.RentalContractDetails)
+            {
+                <tr>
+                    <td>@item.Product?.Name</td>
+                    <td>@item.SelectedSize</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.NumberOfDays</td>
+                    <td>@item.SnapshotUnitPrice.ToString("N0")</td>
+                    <td>@item.SubTotal.ToString("N0")</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<a asp-action="MyContracts" class="btn btn-secondary">Quay lại</a>
