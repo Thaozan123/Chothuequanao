@@ -1,9 +1,10 @@
-@model List<ChoThueQuanAo.Models.Product>
+@model List<ChoThueQuanAo.ViewModels.CartItemViewModel>
 
 @{
     ViewData["Title"] = "Giỏ hàng của bạn";
-    // Giả định mặc định thuê 3 ngày để tính toán sơ bộ
-    decimal subTotal = Model.Sum(p => p.RentalPricePerDay) * 3; 
+    // Mặc định thuê 3 ngày để tính toán ban đầu
+    decimal baseTotalPerDay = Model.Sum(x => x.Product.RentalPricePerDay * x.Quantity);
+    decimal subTotal = baseTotalPerDay * 3; 
 }
 
 <div class="container mt-4">
@@ -23,8 +24,10 @@
                     <thead class="table-dark">
                         <tr>
                             <th>Sản phẩm</th>
-                            <th class="text-center">Size mặc định</th>
-                            <th class="text-end">Giá thuê/ngày</th>
+                            <th class="text-center">Size</th>
+                            <th class="text-center">Số lượng</th>
+                            <th class="text-end">Đơn giá/ngày</th>
+                            <th class="text-center">Xóa</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -33,15 +36,37 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                        @if (!string.IsNullOrEmpty(item.Product.ImageUrl))
                                         {
-                                            <img src="@item.ImageUrl" class="rounded me-2" style="width: 50px; height: 50px; object-fit: cover;" />
+                                            <img src="@item.Product.ImageUrl" class="rounded me-2" style="width: 50px; height: 50px; object-fit: cover;" />
                                         }
-                                        <span class="fw-bold">@item.Name</span>
+                                        <span class="fw-bold">@item.Product.Name</span>
                                     </div>
                                 </td>
-                                <td class="text-center">@item.Size</td>
-                                <td class="text-end">@item.RentalPricePerDay.ToString("N0") đ</td>
+                                <td class="text-center align-middle">@item.Product.Size</td>
+                                <td class="text-center align-middle" style="width: 140px;">
+                                    @if(item.Product.StockQuantity <= 0)
+                                    {
+                                        <span class="text-danger fw-bold">Hết hàng</span>
+                                        <form asp-action="UpdateQuantity" method="post" class="d-none">
+                                            <input type="hidden" name="productId" value="@item.Product.Id" />
+                                            <input type="hidden" name="quantity" value="0" />
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="UpdateQuantity" method="post" class="d-flex justify-content-center">
+                                            <input type="hidden" name="productId" value="@item.Product.Id" />
+                                            <input type="number" name="quantity" value="@item.Quantity" min="1" max="@item.Product.StockQuantity" class="form-control form-control-sm text-center w-75" onchange="this.form.submit()" title="Còn @item.Product.StockQuantity sản phẩm" />
+                                        </form>
+                                    }
+                                </td>
+                                <td class="text-end align-middle">@item.Product.RentalPricePerDay.ToString("N0") đ</td>
+                                <td class="text-center align-middle">
+                                    <a asp-action="RemoveFromCart" asp-route-productId="@item.Product.Id" class="btn btn-sm btn-outline-danger">
+                                        Xóa
+                                    </a>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -65,10 +90,16 @@
                 @* --- TÓM TẮT ĐƠN HÀNG --- *@
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
-                        <h5 class="card-title fw-bold mb-3">Tóm tắt đơn hàng (3 ngày)</h5>
+                        <h5 class="card-title fw-bold mb-3" id="summaryDaysText">Tóm tắt đơn hàng (3 ngày)</h5>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>Số ngày thuê:</span>
+                            <input type="number" id="numberOfDays" class="form-control w-25 text-end" value="3" min="1" max="30" onchange="updateDays()" />
+                        </div>
+
                         <div class="d-flex justify-content-between mb-2">
                             <span>Tạm tính:</span>
-                            <span class="fw-bold">@subTotal.ToString("N0") đ</span>
+                            <span id="subTotalAmount" class="fw-bold">@subTotal.ToString("N0") đ</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2 text-danger">
                             <span>Giảm giá:</span>
@@ -82,9 +113,10 @@
 
                         @* FORM GỬI DỮ LIỆU THANH TOÁN SANG CONTROLLER *@
                         <form asp-action="Checkout" method="post">
-                            @* Hai dòng hidden này cực kỳ quan trọng để gửi kèm Khuyến mãi *@
+                            @* Cực kỳ quan trọng để gửi kèm Khuyến mãi & Số ngày *@
                             <input type="hidden" name="promotionId" id="hiddenPromoId" />
                             <input type="hidden" name="discountAmount" id="hiddenDiscount" value="0" />
+                            <input type="hidden" name="numberOfDays" id="hiddenDays" value="3" />
                             
                             <button type="submit" class="btn btn-success btn-lg w-100 shadow">
                                 Chốt đơn & Thuê ngay
@@ -99,9 +131,39 @@
 
 @* SCRIPT XỬ LÝ KHUYẾN MÃI *@
 <script>
+    var baseTotalPerDay = @baseTotalPerDay;
+
+    function getSubTotal() {
+        var days = parseInt(document.getElementById("numberOfDays").value) || 1;
+        return baseTotalPerDay * days;
+    }
+
+    function updateDays() {
+        var days = parseInt(document.getElementById("numberOfDays").value) || 1;
+        if (days < 1) {
+            days = 1;
+            document.getElementById("numberOfDays").value = 1;
+        }
+
+        document.getElementById("hiddenDays").value = days;
+        document.getElementById("summaryDaysText").innerText = `Tóm tắt đơn hàng (${days} ngày)`;
+
+        var newSubTotal = baseTotalPerDay * days;
+        
+        // Cần reset lại mã vì tổng tiền thay đổi (có thể rớt mức MinOrderAmount)
+        document.getElementById("promoCode").value = "";
+        document.getElementById("promoMessage").innerHTML = "";
+        document.getElementById("hiddenPromoId").value = "";
+        document.getElementById("hiddenDiscount").value = "0";
+        document.getElementById("discountAmount").innerText = "- 0 đ";
+        
+        document.getElementById("subTotalAmount").innerText = newSubTotal.toLocaleString('vi-VN') + " đ";
+        document.getElementById("totalAmount").innerText = newSubTotal.toLocaleString('vi-VN') + " đ";
+    }
+
     function applyPromo() {
         var code = document.getElementById("promoCode").value;
-        var subTotalVal = @subTotal;
+        var subTotalVal = getSubTotal();
 
         if (!code) {
             alert("Vui lòng nhập mã!");

@@ -42,13 +42,56 @@ namespace ChoThueQuanAo.Controllers
                 .Where(p => cartItems.Contains(p.Id))
                 .ToList();
 
-            return View(products);
+            var model = products.Select(p => new ChoThueQuanAo.ViewModels.CartItemViewModel 
+            {
+                Product = p,
+                Quantity = cartItems.Count(id => id == p.Id)
+            }).ToList();
+
+            return View(model);
+        }
+
+        // 🟢 Cập nhật số lượng
+        [HttpPost]
+        public IActionResult UpdateQuantity(int productId, int quantity)
+        {
+            var cart = HttpContext.Session.GetString("Cart");
+            List<int> cartItems = string.IsNullOrEmpty(cart)
+                ? new List<int>()
+                : cart.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+            
+            var product = _context.Products.Find(productId);
+            if (product != null && quantity > product.StockQuantity)
+            {
+                quantity = product.StockQuantity;
+            }
+
+            cartItems.RemoveAll(id => id == productId);
+            if (quantity > 0)
+            {
+                for(int i = 0; i < quantity; i++) cartItems.Add(productId);
+            }
+            HttpContext.Session.SetString("Cart", string.Join(",", cartItems));
+            return RedirectToAction("Index");
+        }
+
+        // 🔴 Xóa sản phẩm
+        public IActionResult RemoveFromCart(int productId)
+        {
+            var cart = HttpContext.Session.GetString("Cart");
+            List<int> cartItems = string.IsNullOrEmpty(cart)
+                ? new List<int>()
+                : cart.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+            
+            cartItems.RemoveAll(id => id == productId);
+            HttpContext.Session.SetString("Cart", string.Join(",", cartItems));
+            return RedirectToAction("Index");
         }
 
         // 🔥 3. XỬ LÝ THANH TOÁN (CHECKOUT)
         [Authorize]
         [HttpPost]
-        public async Task<IActionResult> Checkout(int? promotionId, decimal discountAmount)
+        public async Task<IActionResult> Checkout(int? promotionId, decimal discountAmount, int numberOfDays = 3)
         {
             // Bước A: Lấy giỏ hàng từ Session
             var cart = HttpContext.Session.GetString("Cart");
@@ -89,7 +132,7 @@ namespace ChoThueQuanAo.Controllers
                 DiscountAmount = discountAmount,
                 CreatedAt = DateTime.Now,
                 StartDate = DateTime.Now,
-                ExpectedReturnDate = DateTime.Now.AddDays(3),
+                ExpectedReturnDate = DateTime.Now.AddDays(numberOfDays),
                 Status = "PendingDeposit",
                 RentalContractDetails = new List<RentalContractDetail>() 
             };
@@ -98,24 +141,35 @@ namespace ChoThueQuanAo.Controllers
             decimal totalDeposit = 0;
 
             // Bước D.2: Lặp qua từng món trong giỏ để tạo Chi tiết hợp đồng
-            foreach (var productId in cartItems)
+            foreach (var productId in cartItems.Distinct())
             {
                 var product = await _context.Products.FindAsync(productId);
                 if (product == null) continue;
 
+                int qty = cartItems.Count(id => id == productId);
+
                 var detail = new RentalContractDetail
                 {
                     ProductId = productId,
-                    Quantity = 1,
+                    Quantity = qty,
                     SelectedSize = product.Size ?? "M",
-                    NumberOfDays = 3,
+                    NumberOfDays = numberOfDays,
                     SnapshotUnitPrice = product.RentalPricePerDay,
-                    SubTotal = product.RentalPricePerDay * 3
+                    SubTotal = product.RentalPricePerDay * numberOfDays * qty
                 };
 
                 contract.RentalContractDetails.Add(detail);
                 totalRentalPrice += detail.SubTotal;
-                totalDeposit += product.Deposit;
+                totalDeposit += product.Deposit * qty;
+                
+                // Trừ tồn kho
+                product.StockQuantity -= qty;
+                if (product.StockQuantity <= 0) 
+                {
+                    product.StockQuantity = 0;
+                    product.Status = "Rented"; // Hoặc Hết Hàng
+                }
+                _context.Update(product);
             }
 
             contract.SubTotal = totalRentalPrice;
@@ -141,7 +195,8 @@ namespace ChoThueQuanAo.Controllers
             // 🧹 Bước E: Xóa giỏ hàng
             HttpContext.Session.Remove("Cart");
 
-            return RedirectToAction("MyContracts", "RentalContract");
+            // Bước F: Điều hướng thẳng tới trang quét QR Đặt cọc
+            return RedirectToAction("CheckoutQR", "Payment", new { contractId = contract.Id, type = "Deposit" });
         }
 
         // 🗑️ 4. Xóa sạch giỏ hàng

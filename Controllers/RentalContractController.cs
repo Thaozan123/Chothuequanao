@@ -82,6 +82,145 @@ namespace ChoThueQuanAo.Controllers
         }
 
         // ==========================================================
+        // KHÁCH HÀNG: ĐẶT THUÊ (CHECKOUT)
+        // ==========================================================
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> Create(int productId)
+        {
+            var product = await _context.Products.FindAsync(productId);
+            if (product == null || product.Status != "Available") 
+            {
+                TempData["Error"] = "Sản phẩm không tồn tại hoặc tạm hết hàng.";
+                return RedirectToAction("Index", "Product");
+            }
+
+            var model = new ChoThueQuanAo.ViewModels.CheckoutViewModel
+            {
+                ProductId = product.Id,
+                ProductName = product.Name,
+                ProductImageUrl = product.ImageUrl,
+                RentalPricePerDay = product.RentalPricePerDay,
+                Deposit = product.Deposit,
+                NumberOfDays = 3 // Mặc định 3 ngày
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Customer")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(ChoThueQuanAo.ViewModels.CheckoutViewModel model)
+        {
+            var product = await _context.Products.FindAsync(model.ProductId);
+            if (product == null) return NotFound();
+
+            if (!ModelState.IsValid)
+            {
+                // Nạp lại thông tin hiển thị nếu lỗi
+                model.ProductName = product.Name;
+                model.ProductImageUrl = product.ImageUrl;
+                model.RentalPricePerDay = product.RentalPricePerDay;
+                model.Deposit = product.Deposit;
+                return View(model);
+            }
+
+            // BẮT ĐẦU TRANSACTION
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Lấy mã User
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int userId = int.Parse(userIdStr);
+
+                // 2. Tính toán tiền nong (Subtotal, Cọc) chuẩn từ DB (Không tin tưởng phía Client JS)
+                decimal calculatedSubTotal = product.RentalPricePerDay * model.NumberOfDays;
+                decimal calculatedDeposit = product.Deposit;
+                decimal discountAmount = 0;
+                int? promotionId = null;
+
+                // 3. Áp dụng Khuyến mãi (nếu khách nhập)
+                if (!string.IsNullOrEmpty(model.PromoCode))
+                {
+                    var promo = await _context.Promotions
+                        .FirstOrDefaultAsync(p => p.Code.ToLower() == model.PromoCode.ToLower() && p.IsActive && p.EndDate >= DateTime.Now);
+                    
+                    if (promo != null && calculatedSubTotal >= promo.MinOrderAmount)
+                    {
+                        promotionId = promo.Id;
+                        if (promo.DiscountType == "Percent")
+                            discountAmount = calculatedSubTotal * (promo.DiscountValue / 100);
+                        else
+                            discountAmount = promo.DiscountValue;
+                    }
+                }
+
+                decimal totalAmount = calculatedSubTotal - discountAmount;
+                if (totalAmount < 0) totalAmount = 0; // Chống lỗi âm tiền
+
+                // 4. Tạo Hợp Đồng Mới
+                var contract = new RentalContract
+                {
+                    ContractCode = "RC" + DateTime.Now.ToString("yyMMddHHmmss"),
+                    CustomerId = userId,
+                    StartDate = DateTime.Now,
+                    ExpectedReturnDate = DateTime.Now.AddDays(model.NumberOfDays),
+                    Status = "PendingDeposit", // Chờ cọc
+                    PromotionId = promotionId,
+                    SubTotal = calculatedSubTotal,
+                    DiscountAmount = discountAmount,
+                    TotalAmount = totalAmount,
+                    DepositRequired = calculatedDeposit,
+                    DepositPaid = 0,
+                    Notes = model.Note,
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.RentalContracts.Add(contract);
+                await _context.SaveChangesAsync(); // Lưu để lấy contract.Id
+
+                // 5. Tạo Chi tiết hợp đồng (Sản phẩm khách chọn)
+                var contractDetail = new RentalContractDetail
+                {
+                    RentalContractId = contract.Id,
+                    ProductId = product.Id,
+                    SelectedSize = model.SelectedSize,
+                    Quantity = 1,
+                    NumberOfDays = model.NumberOfDays,
+                    SnapshotUnitPrice = product.RentalPricePerDay,
+                    SnapshotDeposit = product.Deposit,
+                    SubTotal = calculatedSubTotal
+                };
+
+                _context.RentalContractDetails.Add(contractDetail);
+
+                // 6. Trừ tồn kho (StockQuantity)
+                product.StockQuantity -= 1;
+                if (product.StockQuantity <= 0) product.Status = "Rented";
+                _context.Products.Update(product);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // 7. Chuyển hướng thành công (Ví dụ: Chuyển qua trang hướng dẫn đặt cọc)
+                TempData["Success"] = "Đặt hàng thành công! Vui lòng chuyển khoản tiền cọc để nhận hàng.";
+                return RedirectToAction("CheckoutQR", "Payment", new { contractId = contract.Id, type = "Deposit" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                ModelState.AddModelError("", "Đã xảy ra lỗi hệ thống: " + ex.Message);
+
+                // Nạp lại thông tin
+                model.ProductName = product.Name;
+                model.ProductImageUrl = product.ImageUrl;
+                model.RentalPricePerDay = product.RentalPricePerDay;
+                model.Deposit = product.Deposit;
+                return View(model);
+            }
+        }
+
+        // ==========================================================
         // 4. LOGIC TÍNH TOÁN (Khuyến mãi & Ngày trả)
         // ==========================================================
         
