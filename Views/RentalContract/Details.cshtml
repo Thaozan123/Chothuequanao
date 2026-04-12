@@ -132,9 +132,17 @@
                     <button class="btn btn-primary" onclick="window.print()">
                         <i class="fas fa-print me-1"></i> In hợp đồng
                     </button>
-                    @if (User.IsInRole("Admin") && Model.Status == "PendingDeposit")
+                    @if (Model.Status == "PendingDeposit")
                     {
-                        <button class="btn btn-success ms-2">Xác nhận đã thu cọc</button>
+                        <a asp-controller="Payment" asp-action="CheckoutQR" asp-route-contractId="@Model.Id" asp-route-type="Deposit" class="btn btn-warning ms-2">
+                            <i class="fas fa-qrcode"></i> Thanh toán Tiền Cọc
+                        </a>
+                    }
+                    else if (Model.Status == "Active")
+                    {
+                        <a asp-controller="Payment" asp-action="CheckoutQR" asp-route-contractId="@Model.Id" asp-route-type="RentalFee" class="btn btn-success ms-2">
+                            <i class="fas fa-qrcode"></i> Thanh toán Hóa đơn (Trả đồ)
+                        </a>
                     }
                 </div>
             </div>

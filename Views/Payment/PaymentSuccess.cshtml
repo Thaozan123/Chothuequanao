@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Xác nhận thành công";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card shadow-sm border-0 rounded-4 p-5">
+                <div class="mb-4">
+                    <i class="fas fa-check-circle text-success" style="font-size: 100px;"></i>
+                </div>
+                <h2 class="fw-bold text-success mb-3">Đã gửi yêu cầu thành công!</h2>
+                <h5 class="text-dark mb-4">Cảm ơn quý khách đã thực hiện chuyển khoản.</h5>
+                <p class="text-muted mb-4">Hệ thống đã ghi nhận thông báo thanh toán của bạn. Cửa hàng sẽ tiến hành đối soát giao dịch và cập nhật trạng thái hợp đồng trong giây lát. Bạn có thể theo dõi chi tiết hợp đồng để biết tiến trình nhé.</p>
+                
+                <div class="d-flex justify-content-center gap-3 mt-2">
+                    <a href="/RentalContract/Details/@ViewBag.ContractId" class="btn btn-primary btn-lg fw-bold px-4 rounded-pill shadow-sm">
+                        <i class="fas fa-file-invoice me-2"></i> Xem chi tiết hợp đồng
+                    </a>
+                    <a href="/" class="btn btn-outline-secondary btn-lg fw-bold px-4 rounded-pill">
+                        <i class="fas fa-home me-2"></i> Trang chủ
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

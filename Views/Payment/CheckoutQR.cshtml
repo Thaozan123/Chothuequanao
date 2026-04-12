@@ -1,0 +1,47 @@
+@model ChoThueQuanAo.Models.RentalContract
+@{
+    ViewData["Title"] = "Thanh toán QR Code";
+    string bankId = "MB"; // Ngân hàng Quân Đội
+    string accountNo = "0123456789"; // STK giả lập
+    string accountName = "NGUYEN VAN A"; // Chủ STK
+    decimal amount = ViewBag.Amount;
+    string desc = ViewBag.Description;
+
+    // Sử dụng VietQR API gen QR động
+    string qrUrl = $"https://img.vietqr.io/image/{bankId}-{accountNo}-compact2.jpg?amount={amount}&addInfo={desc}&accountName={accountName}";
+    
+    string paymentTypeName = ViewBag.PaymentType == "Deposit" ? "Đặt Cọc" : "Thanh Toán Thuê Đồ";
+}
+
+<div class="row justify-content-center mt-4">
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white text-center py-3">
+                <h5 class="mb-0"><i class="fas fa-qrcode me-2"></i>Chuyển khoản QR - @paymentTypeName</h5>
+            </div>
+            <div class="card-body text-center p-4">
+                <img src="@qrUrl" alt="Mã QR Thanh Toán" class="img-fluid border rounded shadow-sm mb-4" style="max-width: 300px;" />
+                
+                <h5 class="fw-bold text-success">Số tiền: @amount.ToString("N0") VNĐ</h5>
+                <p class="mb-1 text-muted"><strong>Nội dung ck:</strong> <span class="text-primary fw-bold fs-5">@desc</span></p>
+                <hr />
+
+                <form asp-action="ConfirmPayment" method="post" class="mt-4">
+                    <input type="hidden" name="contractId" value="@Model.Id" />
+                    <input type="hidden" name="paymentType" value="@ViewBag.PaymentType" />
+                    <input type="hidden" name="amount" value="@amount" />
+                    
+                    <button type="submit" class="btn btn-primary w-100 fw-bold p-3 text-uppercase shadow-sm">
+                        Tôi Đã Chuyển Khoản Hoàn Tất
+                    </button>
+                    <div class="text-muted small mt-2">Nhấn nút bên trên để tiếp tục sau khi quét mã nhé.</div>
+                </form>
+            </div>
+            <div class="card-footer bg-light text-center py-3">
+                <a asp-action="Details" asp-controller="RentalContract" asp-route-id="@Model.Id" class="text-decoration-none text-muted fw-bold">
+                    ← Trở lại chi tiết hợp đồng
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

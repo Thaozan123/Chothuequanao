@@ -1,0 +1,170 @@
+@model ChoThueQuanAo.ViewModels.CheckoutViewModel
+
+@{
+    ViewData["Title"] = "Đặt Thuê Sản Phẩm";
+}
+
+<div class="container mt-5">
+    <div class="row">
+        <!-- Cột trái: Form nhập liệu -->
+        <div class="col-md-7">
+            <h3 class="mb-4">Thông tin đặt thuê</h3>
+            
+            <form asp-action="Create" method="post">
+                <input type="hidden" asp-for="ProductId" />
+                
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <!-- Chọn Size -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Chọn Size <span class="text-danger">*</span></label>
+                            <select asp-for="SelectedSize" class="form-select">
+                                <option value="">-- Vui lòng chọn Size --</option>
+                                <option value="S">Size S</option>
+                                <option value="M">Size M</option>
+                                <option value="L">Size L</option>
+                                <option value="XL">Size XL</option>
+                            </select>
+                            <span asp-validation-for="SelectedSize" class="text-danger"></span>
+                        </div>
+
+                        <!-- Số ngày thuê -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Số ngày thuê <span class="text-danger">*</span></label>
+                            <input asp-for="NumberOfDays" class="form-control" type="number" min="1" max="30" id="NumberOfDays" />
+                            <small class="text-muted">Ngày dự kiến trả: <span id="expectedReturn" class="fw-bold text-primary">@Model.ExpectedReturnDate.ToString("dd/MM/yyyy")</span></small>
+                            <span asp-validation-for="NumberOfDays" class="text-danger"></span>
+                        </div>
+
+                        <!-- Mã Khuyến Mãi -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Mã Khuyến Mãi (Nếu có)</label>
+                            <div class="input-group">
+                                <input asp-for="PromoCode" class="form-control" placeholder="Nhập mã giảm giá..." id="PromoCode" />
+                                <button type="button" class="btn btn-outline-secondary" id="btnApplyPromo">Áp dụng</button>
+                            </div>
+                            <small id="promoMessage" class="form-text"></small>
+                        </div>
+
+                        <!-- Ghi chú -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ghi chú thêm</label>
+                            <textarea asp-for="Note" class="form-control" rows="3" placeholder="Nhập yêu cầu đặc biệt của bạn..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100">Xác nhận Đặt Thuê</button>
+            </form>
+        </div>
+
+        <!-- Cột phải: Thông tin đơn hàng (Subtotal, Cọc) -->
+        <div class="col-md-5">
+            <div class="card shadow-sm sticky-top" style="top: 2rem;">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Chi tiết sản phẩm</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex mb-3">
+                        @if (!string.IsNullOrEmpty(Model.ProductImageUrl))
+                        {
+                            <img src="@Model.ProductImageUrl" alt="@Model.ProductName" class="img-thumbnail me-3" style="width: 80px; height: 100px; object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <div class="bg-secondary text-white d-flex align-items-center justify-content-center img-thumbnail me-3" style="width: 80px; height: 100px;">
+                                No Image
+                            </div>
+                        }
+                        <div>
+                            <h6 class="fw-bold">@Model.ProductName</h6>
+                            <p class="mb-0 text-muted">Giá thuê: @Model.RentalPricePerDay.ToString("N0") VNĐ / ngày</p>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Tiền thuê (<span id="summaryDays">@Model.NumberOfDays</span> ngày):</span>
+                        <span id="txtSubTotal" class="fw-bold" data-price="@Model.RentalPricePerDay">@Model.SubTotal.ToString("N0") VNĐ</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-2 text-success" id="discountRow" style="display: none !important;">
+                        <span>Giảm giá:</span>
+                        <span id="txtDiscount">- 0 VNĐ</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Tổng tiền thuê:</span>
+                        <span id="txtTotal" class="fw-bold text-danger fs-5">@Model.SubTotal.ToString("N0") VNĐ</span>
+                    </div>
+
+                    <hr />
+
+                    <div class="d-flex justify-content-between mb-0">
+                        <span>Tiền cọc bắt buộc:</span>
+                        <span class="fw-bold text-warning">@Model.Deposit.ToString("N0") VNĐ</span>
+                    </div>
+                    <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Tiền cọc sẽ được hoàn trả đầy đủ sau khi bạn trả đồ đúng hạn và không hư hỏng.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            // Xử lý thay đổi số ngày thuê lập tức tính lại tiền
+            $('#NumberOfDays').on('input', function() {
+                let days = parseInt($(this).val()) || 1;
+                let pricePerDay = parseFloat($('#txtSubTotal').data('price'));
+                
+                $('#summaryDays').text(days);
+                
+                let subTotal = days * pricePerDay;
+                $('#txtSubTotal').text(subTotal.toLocaleString('vi-VN') + " VNĐ");
+                $('#txtTotal').text(subTotal.toLocaleString('vi-VN') + " VNĐ"); // Tạm thời bằng subtotal nếu chưa áp mã
+                
+                // Reset mã giảm giá vì tổng tiền có thể không đủ điều kiện nữa
+                $('#discountRow').attr('style', 'display: none !important;');
+                $('#promoMessage').text('');
+                
+                // Lấy ngày trả dự kiến qua API Call
+                $.get('/RentalContract/GetExpectedReturnDate?days=' + days, function(data) {
+                    $('#expectedReturn').text(data.returnDate);
+                });
+            });
+
+            // Xử lý nút Apply Promo code
+            $('#btnApplyPromo').click(function() {
+                let promo = $('#PromoCode').val();
+                let days = parseInt($('#NumberOfDays').val()) || 1;
+                let pricePerDay = parseFloat($('#txtSubTotal').data('price'));
+                let subTotal = days * pricePerDay;
+
+                if (!promo) return;
+
+                $.post('/RentalContract/ApplyDiscount', { 
+                    promoCode: promo, 
+                    subTotal: subTotal 
+                }, function(res) {
+                    if (res.success) {
+                        $('#promoMessage').text('Áp dụng mã thành công!').removeClass('text-danger').addClass('text-success');
+                        $('#discountRow').attr('style', 'display: flex !important;');
+                        $('#txtDiscount').text('- ' + res.discountAmount.toLocaleString('vi-VN') + ' VNĐ');
+                        
+                        let total = subTotal - res.discountAmount;
+                        if (total < 0) total = 0;
+                        $('#txtTotal').text(total.toLocaleString('vi-VN') + ' VNĐ');
+                    } else {
+                        $('#promoMessage').text(res.message).removeClass('text-success').addClass('text-danger');
+                        $('#discountRow').attr('style', 'display: none !important;');
+                        $('#txtTotal').text(subTotal.toLocaleString('vi-VN') + ' VNĐ');
+                    }
+                });
+            });
+        });
+    </script>
+}

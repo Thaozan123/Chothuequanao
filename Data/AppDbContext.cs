@@ -19,6 +19,8 @@ namespace ChoThueQuanAo.Data
         public DbSet<Promotion> Promotions { get; set; }
 
         public DbSet<Supplier> Suppliers { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -77,12 +79,20 @@ namespace ChoThueQuanAo.Data
                 entity.Property(e => e.DiscountAmount).HasPrecision(18, 2);
                 entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
                 entity.Property(e => e.DepositRequired).HasPrecision(18, 2);
+                entity.Property(e => e.DepositPaid).HasPrecision(18, 2);
+                entity.Property(e => e.ShippingFee).HasPrecision(18, 2);
             });
 
             // Bảng RentalContractDetail
             modelBuilder.Entity<RentalContractDetail>(entity => {
                 entity.Property(e => e.SnapshotUnitPrice).HasPrecision(18, 2);
                 entity.Property(e => e.SubTotal).HasPrecision(18, 2);
+                entity.Property(e => e.SnapshotDeposit).HasPrecision(18, 2);
+            });
+
+            // Bảng Payment
+            modelBuilder.Entity<Payment>(entity => {
+                entity.Property(e => e.Amount).HasPrecision(18, 2);
             });
         }
     }

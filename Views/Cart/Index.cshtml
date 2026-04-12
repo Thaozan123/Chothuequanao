@@ -1,228 +1,202 @@
-@model IEnumerable<ChoThueQuanAo.Models.Product>
-@using ChoThueQuanAo.Models
+@model List<ChoThueQuanAo.ViewModels.CartItemViewModel>
+
 @{
     ViewData["Title"] = "Giỏ hàng của bạn";
-    var products = Model ?? Enumerable.Empty<Product>();
-    var subTotal = products.Sum(p => p.RentalPricePerDay * 3);
-    var totalAmount = subTotal;
-    var adviceLines = new List<string>();
-    if (!products.Any())
+    // Mặc định thuê 3 ngày để tính toán ban đầu
+    decimal baseTotalPerDay = Model.Sum(x => x.Product.RentalPricePerDay * x.Quantity);
+    decimal subTotal = baseTotalPerDay * 3; 
+}
+
+<div class="container mt-4">
+    <h2 class="text-primary fw-bold mb-4">🛒 Giỏ hàng của bạn</h2>
+
+    @if (Model == null || !Model.Any())
     {
-        adviceLines.Add("Giỏ hàng trống. Hãy chọn đồ để nhận tư vấn AI phù hợp với sự kiện của bạn.");
+        <div class="alert alert-info shadow-sm">
+            <p class="mb-0">Giỏ hàng của bạn đang trống. Hãy quay lại <a asp-controller="Product" asp-action="Index" class="fw-bold">Danh sách sản phẩm</a> để chọn đồ nhé!</p>
+        </div>
     }
     else
     {
-        if (products.Count() > 1)
-        {
-            adviceLines.Add("Bạn đang thuê nhiều sản phẩm, hãy kiểm tra kích cỡ và thời gian trả để tránh phí trễ.");
-        }
-        else
-        {
-            var single = products.First();
-            adviceLines.Add($"Sản phẩm {single.Name} phù hợp cho những dịp cần vẻ đẹp trang trọng và thoải mái.");
-        }
-
-        if (subTotal > 150000)
-        {
-            adviceLines.Add("Tổng tiền thuê khá cao, bạn nên sử dụng mã khuyến mãi nếu có.");
-        }
-
-        if (products.Any(p => p.StockQuantity < 3))
-        {
-            adviceLines.Add("Một số sản phẩm đang còn ít hàng, nên chốt đơn sớm để giữ được món yêu thích.");
-        }
-    }
-    var cartAdvice = string.Join(" ", adviceLines);
-}
-
-<div class="container">
-    <h2 class="mb-4"><i class="fas fa-shopping-cart"></i> Giỏ hàng của bạn</h2>
-
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card mb-4 border-primary">
-                <div class="card-body bg-light">
-                    <h5 class="card-title">Tư vấn AI</h5>
-                    <p class="card-text">@cartAdvice</p>
-                </div>
-            </div>
-            <!-- Bảng giỏ hàng của bạn -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <table class="table table-striped">
-                        <thead class="table-dark">
+        <div class="row">
+            <div class="col-md-8">
+                <table class="table table-hover border shadow-sm bg-white rounded">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th class="text-center">Size</th>
+                            <th class="text-center">Số lượng</th>
+                            <th class="text-end">Đơn giá/ngày</th>
+                            <th class="text-center">Xóa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
                             <tr>
-                                <th>Sản phẩm</th>
-                                <th>Size mặc định</th>
-                                <th>Giá thuê/ngày</th>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        @if (!string.IsNullOrEmpty(item.Product.ImageUrl))
+                                        {
+                                            <img src="@item.Product.ImageUrl" class="rounded me-2" style="width: 50px; height: 50px; object-fit: cover;" />
+                                        }
+                                        <span class="fw-bold">@item.Product.Name</span>
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">@item.Product.Size</td>
+                                <td class="text-center align-middle" style="width: 140px;">
+                                    @if(item.Product.StockQuantity <= 0)
+                                    {
+                                        <span class="text-danger fw-bold">Hết hàng</span>
+                                        <form asp-action="UpdateQuantity" method="post" class="d-none">
+                                            <input type="hidden" name="productId" value="@item.Product.Id" />
+                                            <input type="hidden" name="quantity" value="0" />
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="UpdateQuantity" method="post" class="d-flex justify-content-center">
+                                            <input type="hidden" name="productId" value="@item.Product.Id" />
+                                            <input type="number" name="quantity" value="@item.Quantity" min="1" max="@item.Product.StockQuantity" class="form-control form-control-sm text-center w-75" onchange="this.form.submit()" title="Còn @item.Product.StockQuantity sản phẩm" />
+                                        </form>
+                                    }
+                                </td>
+                                <td class="text-end align-middle">@item.Product.RentalPricePerDay.ToString("N0") đ</td>
+                                <td class="text-center align-middle">
+                                    <a asp-action="RemoveFromCart" asp-route-productId="@item.Product.Id" class="btn btn-sm btn-outline-danger">
+                                        Xóa
+                                    </a>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @if (products.Any())
-                            {
-                                foreach (var product in products)
-                                {
-                                    <tr>
-                                        <td>@product.Name</td>
-                                        <td>@(string.IsNullOrEmpty(product.Size) ? "M" : product.Size)</td>
-                                        <td>@product.RentalPricePerDay.ToString("N0") đ</td>
-                                    </tr>
-                                }
-                            }
-                            else
-                            {
-                                <tr>
-                                    <td colspan="3" class="text-center py-5 text-muted">
-                                        Giỏ hàng của bạn hiện đang trống.
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                    </tbody>
+                </table>
+                <a asp-controller="Product" asp-action="Index" class="btn btn-outline-secondary mt-2">← Tiếp tục chọn đồ</a>
             </div>
 
-            <a href="@Url.Action("Index", "Product")" class="btn btn-outline-secondary">
-                ← Tiếp tục chọn đồ
-            </a>
-        </div>
-
-        <div class="col-lg-4">
-            <!-- Thẻ áp dụng mã khuyến mãi -->
-            <div class="card mb-3 p-3">
-                <h5 class="mb-3">Mã khuyến mãi</h5>
-                <form id="applyVoucherForm">
-                    @Html.AntiForgeryToken()
-                    <div class="input-group">
-                        <input id="voucherCode" name="code" type="text" class="form-control"
-                               placeholder="Nhập mã ưu đãi..." />
-                        <button id="applyDiscountBtn" type="submit" class="btn btn-primary">
-                            Áp dụng
-                        </button>
+            <div class="col-md-4">
+                @* --- PHẦN KHUYẾN MÃI --- *@
+                <div class="card shadow-sm border-0 mb-3 bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold">Mã khuyến mãi</h5>
+                        <div class="input-group">
+                            <input type="text" id="promoCode" class="form-control" placeholder="Nhập mã ưu đãi...">
+                            <button class="btn btn-primary" type="button" onclick="applyPromo()">Áp dụng</button>
+                        </div>
+                        <div id="promoMessage" class="mt-2 small"></div>
                     </div>
-                </form>
-                <div id="voucherMessage" class="mt-2"></div>
-            </div>
-
-            <div id="promotionAvailableContainer" class="mb-3"></div>
-
-            <div class="card p-3">
-                <h5>Tóm tắt đơn hàng (3 ngày)</h5>
-                <div class="d-flex justify-content-between">
-                    <span>Tạm tính:</span>
-                    <strong id="subTotalDisplay" data-value="@subTotal">@subTotal.ToString("N0") đ</strong>
-                </div>
-                <div class="d-flex justify-content-between text-danger">
-                    <span>Giảm giá:</span>
-                    <strong id="discountDisplay">- 0 đ</strong>
-                </div>
-                <hr />
-                <div class="d-flex justify-content-between">
-                    <span>Tổng cộng:</span>
-                    <strong id="totalAmountDisplay" class="text-success">@totalAmount.ToString("N0") đ</strong>
                 </div>
 
-                <form id="checkoutForm" asp-action="Checkout" asp-controller="Cart" method="post">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="promotionId" id="promotionId" value="" />
-                    <input type="hidden" name="discountAmount" id="discountAmount" value="0" />
-                    <button type="submit" class="btn btn-success btn-lg w-100 mt-3">
-                        Chốt đơn & Thuê ngay
-                    </button>
-                </form>
+                @* --- TÓM TẮT ĐƠN HÀNG --- *@
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold mb-3" id="summaryDaysText">Tóm tắt đơn hàng (3 ngày)</h5>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>Số ngày thuê:</span>
+                            <input type="number" id="numberOfDays" class="form-control w-25 text-end" value="3" min="1" max="30" onchange="updateDays()" />
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tạm tính:</span>
+                            <span id="subTotalAmount" class="fw-bold">@subTotal.ToString("N0") đ</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 text-danger">
+                            <span>Giảm giá:</span>
+                            <span id="discountAmount">- 0 đ</span>
+                        </div>
+                        <hr />
+                        <div class="d-flex justify-content-between mb-4">
+                            <span class="h5 fw-bold">Tổng cộng:</span>
+                            <span id="totalAmount" class="h5 fw-bold text-success">@subTotal.ToString("N0") đ</span>
+                        </div>
+
+                        @* FORM GỬI DỮ LIỆU THANH TOÁN SANG CONTROLLER *@
+                        <form asp-action="Checkout" method="post">
+                            @* Cực kỳ quan trọng để gửi kèm Khuyến mãi & Số ngày *@
+                            <input type="hidden" name="promotionId" id="hiddenPromoId" />
+                            <input type="hidden" name="discountAmount" id="hiddenDiscount" value="0" />
+                            <input type="hidden" name="numberOfDays" id="hiddenDays" value="3" />
+                            
+                            <button type="submit" class="btn btn-success btn-lg w-100 shadow">
+                                Chốt đơn & Thuê ngay
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    }
 </div>
 
-@section Scripts {
-    <script>
-        function formatCurrency(value) {
-            return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
+@* SCRIPT XỬ LÝ KHUYẾN MÃI *@
+<script>
+    var baseTotalPerDay = @baseTotalPerDay;
+
+    function getSubTotal() {
+        var days = parseInt(document.getElementById("numberOfDays").value) || 1;
+        return baseTotalPerDay * days;
+    }
+
+    function updateDays() {
+        var days = parseInt(document.getElementById("numberOfDays").value) || 1;
+        if (days < 1) {
+            days = 1;
+            document.getElementById("numberOfDays").value = 1;
         }
 
-        function parseCurrency(value) {
-            return Number(value.toString().replace(/[^0-9.-]+/g, '')) || 0;
+        document.getElementById("hiddenDays").value = days;
+        document.getElementById("summaryDaysText").innerText = `Tóm tắt đơn hàng (${days} ngày)`;
+
+        var newSubTotal = baseTotalPerDay * days;
+        
+        // Cần reset lại mã vì tổng tiền thay đổi (có thể rớt mức MinOrderAmount)
+        document.getElementById("promoCode").value = "";
+        document.getElementById("promoMessage").innerHTML = "";
+        document.getElementById("hiddenPromoId").value = "";
+        document.getElementById("hiddenDiscount").value = "0";
+        document.getElementById("discountAmount").innerText = "- 0 đ";
+        
+        document.getElementById("subTotalAmount").innerText = newSubTotal.toLocaleString('vi-VN') + " đ";
+        document.getElementById("totalAmount").innerText = newSubTotal.toLocaleString('vi-VN') + " đ";
+    }
+
+    function applyPromo() {
+        var code = document.getElementById("promoCode").value;
+        var subTotalVal = getSubTotal();
+
+        if (!code) {
+            alert("Vui lòng nhập mã!");
+            return;
         }
 
-        async function loadAvailablePromotions() {
-            const container = document.getElementById("promotionAvailableContainer");
-            try {
-                const response = await fetch("/Promotion/Available");
-                if (response.ok) {
-                    container.innerHTML = await response.text();
-                    registerPromoButtons();
-                } else {
-                    container.innerHTML = "<div class='text-danger'>Không tải được danh sách voucher.</div>";
-                }
-            } catch {
-                container.innerHTML = "<div class='text-danger'>Lỗi tải voucher.</div>";
+        // Gọi hàm xử lý Ajax đến Controller
+        fetch(`/RentalContract/ApplyDiscount?promoCode=${code}&subTotal=${subTotalVal}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            var msg = document.getElementById("promoMessage");
+            if (data.success) {
+                msg.innerHTML = `<span class="text-success fw-bold">✓ Áp dụng thành công!</span>`;
+                
+                // 1. Cập nhật số tiền hiển thị trên giao diện
+                var discount = data.discountAmount;
+                document.getElementById("discountAmount").innerText = "- " + discount.toLocaleString() + " đ";
+                document.getElementById("totalAmount").innerText = (subTotalVal - discount).toLocaleString() + " đ";
+
+                // 2. CẬP NHẬT GIÁ TRỊ VÀO FORM ĐỂ GỬI ĐI
+                document.getElementById("hiddenPromoId").value = data.promoId;
+                document.getElementById("hiddenDiscount").value = discount;
+            } else {
+                msg.innerHTML = `<span class="text-danger">✗ ${data.message}</span>`;
+                // Reset lại giá trị nếu áp dụng mã sai
+                document.getElementById("hiddenPromoId").value = "";
+                document.getElementById("hiddenDiscount").value = "0";
+                document.getElementById("discountAmount").innerText = "- 0 đ";
+                document.getElementById("totalAmount").innerText = subTotalVal.toLocaleString() + " đ";
             }
-        }
-
-        function registerPromoButtons() {
-            document.querySelectorAll(".apply-promo").forEach(button => {
-                button.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    const code = button.getAttribute("data-code");
-                    document.getElementById("voucherCode").value = code;
-                    applyVoucher(code);
-                });
-            });
-        }
-
-        async function applyVoucher(code) {
-            const tokenInput = document.querySelector("input[name='__RequestVerificationToken']");
-            if (!tokenInput) return;
-            const token = tokenInput.value;
-            const messageBox = document.getElementById("voucherMessage");
-            const formData = new URLSearchParams();
-            formData.append("__RequestVerificationToken", token);
-            formData.append("code", code);
-
-            try {
-                const response = await fetch("/Promotion/ApplyVoucher", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    },
-                    body: formData.toString()
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    const subTotal = parseCurrency(document.getElementById("subTotalDisplay").dataset.value);
-                    let discount = 0;
-                    if (data.discountType === "Percent") {
-                        discount = subTotal * (parseFloat(data.discountValue) / 100);
-                    } else {
-                        discount = parseFloat(data.discountValue);
-                    }
-
-                    discount = Math.max(0, discount);
-                    const total = Math.max(0, subTotal - discount);
-
-                    document.getElementById("voucherMessage").innerHTML = `<div class="text-success">${data.message}</div>`;
-                    document.getElementById("discountDisplay").textContent = `- ${formatCurrency(discount)}`;
-                    document.getElementById("totalAmountDisplay").textContent = formatCurrency(total);
-                    document.getElementById("promotionId").value = data.promoId || '';
-                    document.getElementById("discountAmount").value = discount;
-                } else {
-                    document.getElementById("voucherMessage").innerHTML = `<div class="text-danger">${data.message}</div>`;
-                }
-            } catch {
-                document.getElementById("voucherMessage").innerHTML = "<div class='text-danger'>Lỗi áp dụng mã.</div>";
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            loadAvailablePromotions();
-
-            document.getElementById("applyVoucherForm").addEventListener("submit", function (e) {
-                e.preventDefault();
-                const code = document.getElementById("voucherCode").value.trim();
-                if (code.length > 0) applyVoucher(code);
-            });
-        });
-    </script>
-}
+        })
+        .catch(err => console.error("Lỗi:", err));
+    }
+</script>
