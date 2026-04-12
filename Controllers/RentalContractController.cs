@@ -131,7 +131,10 @@ namespace ChoThueQuanAo.Controllers
             {
                 // 1. Lấy mã User
                 var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                int userId = int.Parse(userIdStr);
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return Forbid();
+                }
 
                 // 2. Tính toán tiền nong (Subtotal, Cọc) chuẩn từ DB (Không tin tưởng phía Client JS)
                 decimal calculatedSubTotal = product.RentalPricePerDay * model.NumberOfDays;

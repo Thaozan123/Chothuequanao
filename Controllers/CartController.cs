@@ -48,6 +48,31 @@ namespace ChoThueQuanAo.Controllers
                 Quantity = cartItems.Count(id => id == p.Id)
             }).ToList();
 
+            decimal baseTotalPerDay = model.Sum(x => x.Product.RentalPricePerDay * x.Quantity);
+            int numberOfDays = 3;
+            decimal subTotal = baseTotalPerDay * numberOfDays;
+            ViewBag.CartSubTotal = subTotal;
+
+            var availablePromos = new List<Promotion>();
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (int.TryParse(userIdClaim, out int currentUserId))
+                {
+                    bool isOldCustomer = _context.RentalContracts.Any(c => c.CustomerId == currentUserId);
+                    availablePromos = _context.Promotions
+                        .Where(p => p.IsActive
+                                    && p.StartDate <= DateTime.Now
+                                    && p.EndDate >= DateTime.Now
+                                    && p.UsedCount < p.UsageLimit
+                                    && p.MinOrderAmount <= subTotal
+                                    && (!isOldCustomer || !p.Code.ToUpper().Contains("WELCOME")))
+                        .OrderByDescending(p => p.DiscountValue)
+                        .ToList();
+                }
+            }
+
+            ViewBag.AvailablePromotions = availablePromos;
             return View(model);
         }
 
@@ -91,6 +116,7 @@ namespace ChoThueQuanAo.Controllers
         // 🔥 3. XỬ LÝ THANH TOÁN (CHECKOUT)
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Checkout(int? promotionId, decimal discountAmount, int numberOfDays = 3)
         {
             // Bước A: Lấy giỏ hàng từ Session
