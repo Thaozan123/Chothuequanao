@@ -1,0 +1,40 @@
+@model IEnumerable<ChoThueQuanAo.Models.Promotion>
+
+<div class="promotion-list">
+    <h5>Mã khuyến mãi có thể dùng</h5>
+    <ul class="list-group">
+        @if (!Model.Any())
+        {
+            <li class="list-group-item text-muted">
+                Hiện không có mã khuyến mãi nào phù hợp.
+            </li>
+        }
+        else
+        {
+            foreach (var promo in Model)
+            {
+                var discountText = promo.DiscountType == "Percent"
+                    ? $"{promo.DiscountValue}%"
+                    : $"{promo.DiscountValue:N0} đ";
+
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>@promo.Code</strong> - @promo.Name
+                        <div class="small text-muted">
+                            Giảm @discountText
+                            @if (promo.MinOrderAmount > 0)
+                            {
+                                <span> - Đơn tối thiểu @promo.MinOrderAmount:N0 đ</span>
+                            }
+                        </div>
+                    </div>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary apply-promo"
+                            data-code="@promo.Code">
+                        Áp dụng
+                    </button>
+                </li>
+            }
+        }
+    </ul>
+</div>

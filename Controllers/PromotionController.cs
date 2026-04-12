@@ -3,7 +3,7 @@ using ChoThueQuanAo.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims; // Cần thêm dòng này để lấy User ID
+using System.Security.Claims;
 
 namespace ChoThueQuanAo.Controllers
 {
@@ -16,34 +16,29 @@ namespace ChoThueQuanAo.Controllers
             _context = context;
         }
 
-        // ==========================================================
-        // 1. TRANG DÀNH CHO KHÁCH HÀNG & ADMIN (Index chung)
-        // ==========================================================
         public async Task<IActionResult> Index()
         {
             var now = DateTime.Now;
 
-            // Nếu là Admin: Hiện toàn bộ mã để quản lý
             if (User.IsInRole("Admin"))
             {
                 var allPromos = await _context.Promotions.OrderByDescending(p => p.Id).ToListAsync();
                 return View("AdminIndex", allPromos);
             }
 
-            // --- LOGIC LỌC KHÁCH HÀNG MỚI CHO VÂN ---
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            int currentUserId = int.Parse(userIdClaim ?? "0");
+            if (!int.TryParse(userIdClaim, out int currentUserId))
+            {
+                return View(new List<Promotion>());
+            }
 
-            // Kiểm tra khách đã có hợp đồng nào chưa
             bool isOldCustomer = await _context.RentalContracts.AnyAsync(c => c.CustomerId == currentUserId);
 
-            // Bắt đầu truy vấn lọc mã
-            var query = _context.Promotions.Where(p => p.IsActive 
-                                                 && p.StartDate <= now 
-                                                 && p.EndDate >= now 
+            var query = _context.Promotions.Where(p => p.IsActive
+                                                 && p.StartDate <= now
+                                                 && p.EndDate >= now
                                                  && p.UsedCount < p.UsageLimit);
 
-            // Nếu là khách cũ (đã từng thuê), lọc bỏ các mã có chữ "WELCOME"
             if (isOldCustomer)
             {
                 query = query.Where(p => !p.Code.ToUpper().Contains("WELCOME"));
@@ -54,9 +49,76 @@ namespace ChoThueQuanAo.Controllers
             return View(activePromos);
         }
 
-        // ==========================================================
-        // 2. CÁC CHỨC NĂNG QUẢN LÝ (CHỈ ADMIN MỚI ĐƯỢC VÀO)
-        // ==========================================================
+        [Authorize]
+        public async Task<IActionResult> Available()
+        {
+            var now = DateTime.Now;
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdClaim, out int currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            bool isOldCustomer = await _context.RentalContracts.AnyAsync(c => c.CustomerId == currentUserId);
+
+            var query = _context.Promotions.Where(p => p.IsActive
+                                                 && p.StartDate <= now
+                                                 && p.EndDate >= now
+                                                 && p.UsedCount < p.UsageLimit);
+
+            if (isOldCustomer)
+            {
+                query = query.Where(p => !p.Code.ToUpper().Contains("WELCOME"));
+            }
+
+            var activePromos = await query.OrderByDescending(p => p.DiscountValue).ToListAsync();
+            return PartialView("_PromotionList", activePromos);
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApplyVoucher(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                return Json(new { success = false, message = "Vui lòng nhập mã khuyến mãi." });
+            }
+
+            var now = DateTime.Now;
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdClaim, out int currentUserId))
+            {
+                return Json(new { success = false, message = "Bạn chưa đăng nhập." });
+            }
+
+            bool isOldCustomer = await _context.RentalContracts.AnyAsync(c => c.CustomerId == currentUserId);
+
+            var promo = await _context.Promotions
+                .Where(p => p.IsActive
+                         && p.Code == code.Trim()
+                         && p.StartDate <= now
+                         && p.EndDate >= now
+                         && p.UsedCount < p.UsageLimit)
+                .FirstOrDefaultAsync();
+
+            if (promo == null || (isOldCustomer && promo.Code.ToUpper().Contains("WELCOME")))
+            {
+                return Json(new { success = false, message = "Mã không hợp lệ hoặc không áp dụng cho bạn." });
+            }
+
+            return Json(new
+            {
+                success = true,
+                message = "Áp dụng mã thành công.",
+                promoId = promo.Id,
+                code = promo.Code,
+                discountValue = promo.DiscountValue,
+                discountType = promo.DiscountType,
+                minOrderAmount = promo.MinOrderAmount
+            });
+        }
 
         [Authorize(Roles = "Admin")]
         public IActionResult Create() => View();
@@ -68,7 +130,6 @@ namespace ChoThueQuanAo.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Kiểm tra mã trùng
                 if (await _context.Promotions.AnyAsync(x => x.Code == promo.Code))
                 {
                     ModelState.AddModelError("Code", "Mã khuyến mãi này đã tồn tại.");

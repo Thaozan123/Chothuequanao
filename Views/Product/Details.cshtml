@@ -1,4 +1,4 @@
-@model ChoThueQuanAo.Models.Product
+@model ChoThueQuanAo.ViewModels.ProductDetailsViewModel
 
 @{
     ViewData["Title"] = "Chi tiết sản phẩm";
@@ -9,57 +9,169 @@
 <table class="table table-bordered">
     <tr>
         <th>Mã sản phẩm</th>
-        <td>@Model.ProductCode</td>
+        <td>@Model.Product.ProductCode</td>
     </tr>
     <tr>
         <th>Tên sản phẩm</th>
-        <td>@Model.Name</td>
+        <td>@Model.Product.Name</td>
     </tr>
     <tr>
         <th>Danh mục</th>
-        <td>@Model.Category?.Name</td>
+        <td>@Model.Product.Category?.Name</td>
     </tr>
     <tr>
         <th>Mô tả</th>
-        <td>@Model.Description</td>
+        <td>@Model.Product.Description</td>
     </tr>
     <tr>
         <th>Màu sắc</th>
-        <td>@Model.Color</td>
+        <td>@Model.Product.Color</td>
     </tr>
     <tr>
         <th>Chất liệu</th>
-        <td>@Model.Material</td>
+        <td>@Model.Product.Material</td>
     </tr>
     <tr>
         <th>Size</th>
-        <td>@Model.Size</td>
+        <td>@Model.Product.Size</td>
     </tr>
     <tr>
         <th>Giá thuê/ngày</th>
-        <td>@Model.RentalPricePerDay</td>
+        <td>@Model.Product.RentalPricePerDay</td>
     </tr>
     <tr>
         <th>Phí trễ/ngày</th>
-        <td>@Model.LateFeePerDay</td>
+        <td>@Model.Product.LateFeePerDay</td>
     </tr>
     <tr>
         <th>Tiền cọc</th>
-        <td>@Model.Deposit</td>
+        <td>@Model.Product.Deposit</td>
     </tr>
     <tr>
         <th>Link hình ảnh</th>
-        <td>@Model.ImageUrl</td>
+        <td>@Model.Product.ImageUrl</td>
     </tr>
     <tr>
         <th>Trạng thái</th>
-        <td>@Model.Status</td>
+        <td>@Model.Product.Status</td>
     </tr>
     <tr>
         <th>Tồn kho</th>
-        <td>@Model.StockQuantity</td>
+        <td>@Model.Product.StockQuantity</td>
     </tr>
 </table>
 
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div class="card border-secondary mb-3">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Bảng size tham khảo</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Vùng</th>
+                            <th>Thông số</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in Model.SizeChart)
+                        {
+                            <tr>
+                                <td>@entry.Region</td>
+                                <td>@entry.Chart</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-secondary mb-3">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Tư vấn màu sắc & size</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Gợi ý màu sắc:</strong> @Model.ColorAdvice</p>
+                <p class="mb-0"><strong>Gợi ý size:</strong> @Model.SizeRecommendation</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-info mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">AI Tư vấn</h5>
+    </div>
+    <div class="card-body">
+        <p>@Model.Advice</p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">Chat với AI</h5>
+    </div>
+    <div class="card-body">
+        <div id="chatWindow" class="border rounded p-3 mb-3" style="min-height:220px; background:#f8f9fa; overflow-y:auto; max-height:320px;"></div>
+        <form id="chatForm" class="d-flex gap-2">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="productId" value="@Model.Product.Id" />
+            <input id="chatMessage" type="text" class="form-control" placeholder="Hỏi AI về size, giá, màu, cọc..." autocomplete="off" />
+            <button type="submit" class="btn btn-primary">Gửi</button>
+        </form>
+    </div>
+</div>
+
 <a asp-action="Index" class="btn btn-primary">Quay lại</a>
-<a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Sửa</a>
+<a asp-action="Edit" asp-route-id="@Model.Product.Id" class="btn btn-warning">Sửa</a>
+
+@section Scripts {
+    <script>
+        function addChatBubble(text, sender) {
+            const container = document.getElementById('chatWindow');
+            const bubble = document.createElement('div');
+            bubble.className = sender === 'user' ? 'text-end mb-2' : 'text-start mb-2';
+            bubble.innerHTML = `<span class="badge ${sender === 'user' ? 'bg-primary' : 'bg-success'}">${sender === 'user' ? 'Bạn' : 'AI'}</span><div class="mt-1 p-2 rounded ${sender === 'user' ? 'bg-primary text-white' : 'bg-light text-dark'}" style="display:inline-block; max-width:100%;">${text}</div>`;
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        document.getElementById('chatForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const messageInput = document.getElementById('chatMessage');
+            const question = messageInput.value.trim();
+            if (!question) return;
+
+            addChatBubble(question, 'user');
+            messageInput.value = '';
+
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : null;
+            const productId = document.getElementById('productId').value;
+            const formData = new URLSearchParams();
+            if (token) formData.append('__RequestVerificationToken', token);
+            formData.append('id', productId);
+            formData.append('question', question);
+
+            try {
+                const response = await fetch('/Product/ChatAdvice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    addChatBubble(data.answer, 'ai');
+                } else {
+                    addChatBubble('AI không trả lời được câu hỏi này.', 'ai');
+                }
+            } catch (error) {
+                addChatBubble('Lỗi kết nối. Vui lòng thử lại.', 'ai');
+            }
+        });
+    </script>
+}

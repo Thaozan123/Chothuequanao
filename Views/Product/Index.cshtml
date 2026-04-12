@@ -7,7 +7,7 @@
 }
 
 <h2 class="mb-3">Danh sách sản phẩm</h2>
-
+<p class="text-secondary mb-3">Nhấn <strong>Xem</strong> để mở chi tiết sản phẩm và xem tư vấn AI giúp bạn chọn đồ phù hợp.</p>
 <div class="d-flex justify-content-between mb-3">
     @* --- NÚT THÊM SẢN PHẨM (CHỈ ADMIN THẤY) --- *@
     <div>
@@ -67,8 +67,8 @@
 
                     <td class="text-center">
                         <div class="btn-group">
-                            @* Nút Xem: Tất cả mọi người đều thấy *@
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm text-white">Xem</a>
+                            @* Nút Xem/Tư vấn AI: Tất cả mọi người đều thấy *@
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm text-white">Xem tư vấn AI</a>
 
                             @if (isAdmin)
                             {

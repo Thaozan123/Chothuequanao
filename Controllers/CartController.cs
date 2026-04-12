@@ -48,6 +48,7 @@ namespace ChoThueQuanAo.Controllers
         // 🔥 3. XỬ LÝ THANH TOÁN (CHECKOUT)
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Checkout(int? promotionId, decimal discountAmount)
         {
             // Bước A: Lấy giỏ hàng từ Session
