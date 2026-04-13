@@ -116,6 +116,9 @@ namespace ChoThueQuanAo.Controllers
                 contract.RentalContractDetails.Add(detail);
                 totalRentalPrice += detail.SubTotal;
                 totalDeposit += product.Deposit;
+
+                // Cập nhật: Tự động trừ số lượng tồn kho của sản phẩm
+                product.StockQuantity -= detail.Quantity;
             }
 
             contract.SubTotal = totalRentalPrice;

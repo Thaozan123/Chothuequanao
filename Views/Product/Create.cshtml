@@ -30,11 +30,18 @@
 
                 <div class="mb-3">
                     <label asp-for="CategoryId" class="form-label font-weight-bold">Danh mục sản phẩm</label>
-                    @* FIXED: Đoạn này giúp hiện danh sách danh mục để bạn click chọn *@
                     <select asp-for="CategoryId" class="form-control" asp-items="ViewBag.CategoryId">
                         <option value="">-- Click để chọn danh mục --</option>
                     </select>
                     <span asp-validation-for="CategoryId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="SupplierId" class="form-label font-weight-bold">Nhà cung cấp</label>
+                    <select asp-for="SupplierId" class="form-control" asp-items="ViewBag.SupplierId">
+                        <option value="">-- Click để chọn nhà cung cấp --</option>
+                    </select>
+                    <span asp-validation-for="SupplierId" class="text-danger"></span>
                 </div>
 
                 <div class="mb-3">
@@ -94,9 +101,11 @@
                             <option value="Maintenance">Đang sửa chữa (Maintenance)</option>
                         </select>
                     </div>
+
                     <div class="col-md-6 mb-3">
-                        <label asp-for="StockQuantity" class="form-label">Số lượng tồn kho</label>
-                        <input asp-for="StockQuantity" class="form-control" type="number" value="1" />
+                        <label asp-for="ImportedQuantity" class="form-label">Số lượng đã nhập</label>
+                        <input asp-for="ImportedQuantity" class="form-control" type="number" value="1" />
+                        <span asp-validation-for="ImportedQuantity" class="text-danger"></span>
                     </div>
                 </div>
 

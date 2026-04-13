@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Nhà cung cấp";
+    var supplierProducts = ViewBag.SupplierProducts as List<ChoThueQuanAo.Models.Product>;
 }
 
 <h2>Danh sách nhà cung cấp</h2>
@@ -19,6 +20,7 @@
     <button type="submit" class="btn btn-secondary">Tìm kiếm</button>
     <a asp-action="Index" class="btn btn-light">Làm mới</a>
 </form>
+
 @if (!Model.Any())
 {
     <div class="alert alert-warning">
@@ -34,6 +36,7 @@
             <th>Email</th>
             <th>Địa chỉ</th>
             <th>Hoạt động</th>
+            <th>Tổng tồn kho</th>
             <th></th>
         </tr>
     </thead>
@@ -46,6 +49,7 @@
                 <td>@item.Email</td>
                 <td>@item.Address</td>
                 <td>@item.IsActive</td>
+                <td class="text-center fw-bold text-primary">@(item.Products?.Sum(p => p.StockQuantity) ?? 0)</td>
                 <td>
                     <a asp-action="Details" asp-route-id="@item.Id">Chi tiết</a> |
                     <a asp-action="Edit" asp-route-id="@item.Id">Sửa</a> |
@@ -55,3 +59,56 @@
         }
     </tbody>
 </table>
+
+@if (supplierProducts != null)
+{
+    <hr />
+    <h3>Sản phẩm của nhà cung cấp: @ViewBag.SelectedSupplierName</h3>
+
+    <p>
+        <strong>Số lượng sản phẩm đã nhập:</strong> @ViewBag.TotalImportedQuantity
+        <br />
+        <strong>Tổng tồn kho:</strong> @ViewBag.TotalStock
+    </p>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Mã SP</th>
+                <th>Tên sản phẩm</th>
+                <th>Danh mục</th>
+                <th>Màu</th>
+                <th>Size</th>
+                <th>Giá/ngày</th>
+                <th>Đã nhập</th>
+                <th>Tồn kho</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (supplierProducts.Any())
+            {
+                @foreach (var p in supplierProducts)
+                {
+                    <tr>
+                        <td>@p.ProductCode</td>
+                        <td>@p.Name</td>
+                        <td>@p.Category?.Name</td>
+                        <td>@p.Color</td>
+                        <td>@p.Size</td>
+                        <td>@p.RentalPricePerDay.ToString("N0") đ</td>
+                        <td>@p.ImportedQuantity</td>
+                        <td>@p.StockQuantity</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="8" class="text-center text-muted">
+                        Nhà cung cấp này chưa có sản phẩm nào.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
