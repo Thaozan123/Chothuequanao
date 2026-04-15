@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ChoThueQuanAo.Data;
 using ChoThueQuanAo.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ChoThueQuanAo.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class SupplierController : Controller
     {
         private readonly AppDbContext _context;
@@ -14,28 +16,49 @@ namespace ChoThueQuanAo.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index(string keyword)
+       public async Task<IActionResult> Index(string keyword)
+{
+    var supplierQuery = _context.Suppliers.AsQueryable();
+
+    if (!string.IsNullOrWhiteSpace(keyword))
+    {
+        keyword = keyword.Trim();
+
+        supplierQuery = supplierQuery.Where(s =>
+            s.Name.Contains(keyword) ||
+            (s.Phone != null && s.Phone.Contains(keyword)) ||
+            (s.Email != null && s.Email.Contains(keyword)) ||
+            (s.Address != null && s.Address.Contains(keyword)));
+    }
+
+    var suppliers = await supplierQuery
+        .OrderByDescending(s => s.CreatedAt)
+        .ToListAsync();
+
+    ViewBag.Keyword = keyword;
+
+    if (!string.IsNullOrWhiteSpace(keyword))
+    {
+        var selectedSupplier = await _context.Suppliers
+            .FirstOrDefaultAsync(s => s.Name.Contains(keyword));
+
+        if (selectedSupplier != null)
         {
-            var query = _context.Suppliers.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(keyword))
-            {
-                keyword = keyword.Trim();
-
-                query = query.Where(s =>
-                    s.Name.Contains(keyword) ||
-                    (s.Phone != null && s.Phone.Contains(keyword)) ||
-                    (s.Email != null && s.Email.Contains(keyword)) ||
-                    (s.Address != null && s.Address.Contains(keyword)));
-            }
-
-            var suppliers = await query
-                .OrderByDescending(s => s.CreatedAt)
+            var supplierProducts = await _context.Products
+                .Include(p => p.Category)
+                .Where(p => p.SupplierId == selectedSupplier.Id)
                 .ToListAsync();
 
-            ViewBag.Keyword = keyword;
-            return View(suppliers);
+            ViewBag.SelectedSupplierName = selectedSupplier.Name;
+            ViewBag.SupplierProducts = supplierProducts;
+
+            ViewBag.TotalImportedQuantity = supplierProducts.Sum(p => p.ImportedQuantity);
+            ViewBag.TotalStock = supplierProducts.Sum(p => p.StockQuantity);
         }
+    }
+
+    return View(suppliers);
+}
 
         public IActionResult Create()
         {

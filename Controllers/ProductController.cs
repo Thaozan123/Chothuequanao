@@ -20,24 +20,25 @@ namespace ChoThueQuanAo.Controllers
         }
 
         // ==========================================================
-        // DÀNH CHO TẤT CẢ MỌI NGƯỜI (Xem hàng & Tìm kiếm)
+        // XEM + TÌM KIẾM
         // ==========================================================
 
         [AllowAnonymous]
         public async Task<IActionResult> Index(string searchString)
         {
-            // Lưu lại từ khóa tìm kiếm để hiển thị lại trên thanh tìm kiếm ở View
             ViewData["CurrentFilter"] = searchString;
 
-            // Lấy danh sách sản phẩm kèm theo thông tin Danh mục
-            var products = from p in _context.Products.Include(p => p.Category)
-                           select p;
+            // 🔥 FIX: thêm Supplier
+            var products = _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.Supplier) // 👈 QUAN TRỌNG
+                .AsQueryable();
 
-            // Thực hiện lọc nếu người dùng có nhập từ khóa
             if (!string.IsNullOrEmpty(searchString))
             {
-                products = products.Where(p => p.Name.Contains(searchString) 
-                                            || p.ProductCode.Contains(searchString));
+                products = products.Where(p =>
+                    p.Name.Contains(searchString) ||
+                    p.ProductCode.Contains(searchString));
             }
 
             return View(await products.ToListAsync());
@@ -48,6 +49,7 @@ namespace ChoThueQuanAo.Controllers
         {
             var product = await _context.Products
                 .Include(p => p.Category)
+                .Include(p => p.Supplier) // 👈 thêm
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (product == null) return NotFound();
@@ -596,98 +598,105 @@ namespace ChoThueQuanAo.Controllers
         }
 
         // ==========================================================
-        // CÁC CHỨC NĂNG QUẢN TRỊ - CHỈ DÀNH CHO ADMIN
+        // ADMIN
         // ==========================================================
 
-        // 1. GET: Tạo sản phẩm mới (Đã nạp danh mục để click chọn)
         [Authorize(Roles = "Admin")]
         public IActionResult Create()
-        {
-            // Load danh sách danh mục vào ViewBag để dropdown ở View hiển thị được
-            ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name");
-            return View();
-        }
+{
+    ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name");
+    ViewBag.SupplierId = new SelectList(_context.Suppliers, "Id", "Name");
+    return View();
+}
 
-        // 2. POST: Lưu sản phẩm mới
         [HttpPost]
-        [ValidateAntiForgeryToken]
+[ValidateAntiForgeryToken]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> Create(Product product)
+{
+    // Tự động gán số lượng tồn kho bằng với số lượng đã nhập khi thêm mới
+    product.StockQuantity = product.ImportedQuantity;
+    ModelState.Remove("StockQuantity"); // Bỏ qua kiểm tra lỗi rỗng nếu có
+
+    if (ModelState.IsValid)
+    {
+        _context.Add(product);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
+
+    ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
+    ViewBag.SupplierId = new SelectList(_context.Suppliers, "Id", "Name", product.SupplierId);
+
+    return View(product);
+}
+
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Create(Product product)
+      public async Task<IActionResult> Edit(int id)
+{
+    var product = await _context.Products.FindAsync(id);
+    if (product == null) return NotFound();
+
+    ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
+    ViewBag.SupplierId = new SelectList(_context.Suppliers, "Id", "Name", product.SupplierId);
+
+    return View(product);
+}
+       [HttpPost]
+[ValidateAntiForgeryToken]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> Edit(int id, Product product)
+{
+    if (id != product.Id) return NotFound();
+
+    if (ModelState.IsValid)
+    {
+        try
         {
-            if (ModelState.IsValid)
-            {
-                _context.Add(product);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            // Nếu có lỗi, nạp lại danh mục để dropdown không bị trống
-            ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
-            return View(product);
+            _context.Update(product);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!_context.Products.Any(e => e.Id == product.Id))
+                return NotFound();
+            throw;
         }
 
-        // 3. GET: Chỉnh sửa sản phẩm (Đã nạp danh mục để chọn lại)
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Edit(int id)
-        {
-            var product = await _context.Products.FindAsync(id);
-            if (product == null) return NotFound();
+        return RedirectToAction(nameof(Index));
+    }
 
-            // Cực kỳ quan trọng: Nạp danh mục để dropdown "Sửa sản phẩm" hiển thị dữ liệu
-            ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
-            return View(product);
-        }
+    ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
+    ViewBag.SupplierId = new SelectList(_context.Suppliers, "Id", "Name", product.SupplierId);
 
-        // 4. POST: Cập nhật sản phẩm
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Edit(int id, Product product)
-        {
-            if (id != product.Id) return NotFound();
+    return View(product);
+}
 
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(product);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!_context.Products.Any(e => e.Id == product.Id)) return NotFound();
-                    else throw;
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            // Nạp lại danh mục nếu lưu thất bại để tránh lỗi dropdown trống
-            ViewBag.CategoryId = new SelectList(_context.ProductCategories, "Id", "Name", product.CategoryId);
-            return View(product);
-        }
-
-        // 5. GET: Xóa sản phẩm
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var product = await _context.Products
                 .Include(p => p.Category)
+                .Include(p => p.Supplier) // 👈 thêm
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (product == null) return NotFound();
             return View(product);
         }
 
-        // 6. POST: Xác nhận xóa sản phẩm
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var product = await _context.Products.FindAsync(id);
+
             if (product != null)
             {
                 _context.Products.Remove(product);
                 await _context.SaveChangesAsync();
             }
+
             return RedirectToAction(nameof(Index));
         }
     }

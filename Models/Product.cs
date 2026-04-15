@@ -22,5 +22,11 @@ namespace ChoThueQuanAo.Models
 
         public ProductCategory? Category { get; set; }
         public ICollection<RentalContractDetail>? RentalContractDetails { get; set; }
+
+        public int? SupplierId { get; set; }
+        public Supplier? Supplier { get; set; }
+
+        
+        public int ImportedQuantity { get; set; }
     }
 }

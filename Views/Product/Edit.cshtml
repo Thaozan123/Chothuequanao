@@ -30,11 +30,18 @@
 
                 <div class="mb-3">
                     <label asp-for="CategoryId" class="form-label">Danh mục</label>
-                    @* FIXED: Sử dụng asp-items để bốc dữ liệu từ SelectList trong Controller *@
                     <select asp-for="CategoryId" class="form-control" asp-items="ViewBag.CategoryId">
                         <option value="">-- Chọn danh mục --</option>
                     </select>
                     <span asp-validation-for="CategoryId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="SupplierId" class="form-label font-weight-bold">Nhà cung cấp</label>
+                    <select asp-for="SupplierId" class="form-control" asp-items="ViewBag.SupplierId">
+                        <option value="">-- Click để chọn nhà cung cấp --</option>
+                    </select>
+                    <span asp-validation-for="SupplierId" class="text-danger"></span>
                 </div>
 
                 <div class="mb-3">
@@ -78,7 +85,7 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label asp-for="Status" class="form-label">Trạng thái</label>
                         <select asp-for="Status" class="form-control">
                             <option value="Available">Available</option>
@@ -88,9 +95,17 @@
                             <option value="Retired">Retired</option>
                         </select>
                     </div>
-                    <div class="col-md-6 mb-3">
+
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="ImportedQuantity" class="form-label">Số lượng đã nhập</label>
+                        <input asp-for="ImportedQuantity" class="form-control" type="number" />
+                        <span asp-validation-for="ImportedQuantity" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
                         <label asp-for="StockQuantity" class="form-label">Tồn kho</label>
                         <input asp-for="StockQuantity" class="form-control" type="number" />
+                        <span asp-validation-for="StockQuantity" class="text-danger"></span>
                     </div>
                 </div>
 
