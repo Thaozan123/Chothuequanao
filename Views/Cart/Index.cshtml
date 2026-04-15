@@ -107,7 +107,14 @@
                         }
                         else
                         {
-                            <div class="text-muted">Chưa có voucher phù hợp hoặc bạn chưa đăng nhập.</div>
+                            if (User.Identity?.IsAuthenticated == true)
+                            {
+                                <div class="text-muted">Chưa có voucher phù hợp với đơn hàng hiện tại.</div>
+                            }
+                            else
+                            {
+                                <div class="text-muted">Chưa có voucher phù hợp hoặc bạn chưa đăng nhập.</div>
+                            }
                         }
                     </div>
                 </div>
@@ -218,6 +225,8 @@
         var formData = new URLSearchParams();
         formData.append("__RequestVerificationToken", tokenInput.value);
         formData.append("code", promoCode.trim());
+
+        formData.append("subTotal", subTotalVal);
 
         fetch("/Promotion/ApplyVoucher", {
             method: 'POST',

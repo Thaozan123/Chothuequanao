@@ -26,13 +26,15 @@ namespace ChoThueQuanAo.Controllers
                 return View("AdminIndex", allPromos);
             }
 
+            // Cho phép xem voucher mà không cần đăng nhập
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!int.TryParse(userIdClaim, out int currentUserId))
-            {
-                return View(new List<Promotion>());
-            }
+            int currentUserId = 0;
+            bool isOldCustomer = false;
 
-            bool isOldCustomer = await _context.RentalContracts.AnyAsync(c => c.CustomerId == currentUserId);
+            if (int.TryParse(userIdClaim, out currentUserId))
+            {
+                isOldCustomer = await _context.RentalContracts.AnyAsync(c => c.CustomerId == currentUserId);
+            }
 
             var query = _context.Promotions.Where(p => p.IsActive
                                                  && p.StartDate <= now
@@ -79,7 +81,7 @@ namespace ChoThueQuanAo.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ApplyVoucher(string code)
+        public async Task<IActionResult> ApplyVoucher(string code, decimal subTotal)
         {
             if (string.IsNullOrWhiteSpace(code))
             {
@@ -97,7 +99,7 @@ namespace ChoThueQuanAo.Controllers
 
             var promo = await _context.Promotions
                 .Where(p => p.IsActive
-                         && p.Code == code.Trim()
+                         && p.Code.ToUpper() == code.Trim().ToUpper()
                          && p.StartDate <= now
                          && p.EndDate >= now
                          && p.UsedCount < p.UsageLimit)
@@ -106,6 +108,11 @@ namespace ChoThueQuanAo.Controllers
             if (promo == null || (isOldCustomer && promo.Code.ToUpper().Contains("WELCOME")))
             {
                 return Json(new { success = false, message = "Mã không hợp lệ hoặc không áp dụng cho bạn." });
+            }
+
+            if (promo.MinOrderAmount > subTotal)
+            {
+                return Json(new { success = false, message = $"Đơn hàng chưa đủ tối thiểu {promo.MinOrderAmount:N0} đ để áp dụng mã này." });
             }
 
             return Json(new
