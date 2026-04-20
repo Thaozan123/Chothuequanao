@@ -1,0 +1,147 @@
+@model ChoThueQuanAo.Models.RentalContract
+
+@{
+    ViewData["Title"] = "Chi tiết hợp đồng " + Model.ContractCode;
+}
+
+<div class="container mt-4">
+    <div class="card shadow border-0">
+        @* --- TIÊU ĐỀ --- *@
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+            <h4 class="mb-0"><i class="fas fa-file-contract me-2"></i>Chi tiết hợp đồng: @Model.ContractCode</h4>
+            @{
+                var statusClass = Model.Status switch {
+                    "PendingDeposit" => "bg-warning text-dark",
+                    "Active" => "bg-success",
+                    "Settled" => "bg-info",
+                    "Cancelled" => "bg-danger",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @statusClass p-2">@Model.Status</span>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="row mb-4">
+                @* --- THÔNG TIN KHÁCH HÀNG --- *@
+                <div class="col-md-6 border-end">
+                    <h5 class="text-primary border-bottom pb-2"><i class="fas fa-user me-2"></i>Thông tin người thuê</h5>
+                    <p class="mb-1"><strong>Họ tên:</strong> @Model.Customer?.FullName</p>
+                    <p class="mb-1"><strong>Số điện thoại:</strong> @Model.Customer?.Phone</p>
+                    <p class="mb-1"><strong>Địa chỉ:</strong> @(Model.Customer?.Address ?? "Trực tiếp tại quầy")</p>
+                    <p class="mb-0 text-muted small">Ngày lập: @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+                </div>
+
+                @* --- THÔNG TIN THỜI GIAN --- *@
+                <div class="col-md-6">
+                    <h5 class="text-primary border-bottom pb-2"><i class="fas fa-calendar-alt me-2"></i>Thời hạn thuê</h5>
+                    <p class="mb-1"><strong>Ngày nhận đồ:</strong> @Model.StartDate.ToString("dd/MM/yyyy")</p>
+                    <p class="mb-1"><strong>Ngày trả dự kiến:</strong> @Model.ExpectedReturnDate.ToString("dd/MM/yyyy")</p>
+                    @if (Model.ActualReturnDate.HasValue)
+                    {
+                        <p class="mb-0 text-success"><strong>Ngày trả thực tế:</strong> @Model.ActualReturnDate.Value.ToString("dd/MM/yyyy")</p>
+                    }
+                </div>
+            </div>
+
+            @* --- DANH SÁCH SẢN PHẨM --- *@
+            <h5 class="text-primary mb-3"><i class="fas fa-tshirt me-2"></i>Sản phẩm trong hợp đồng</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>Tên sản phẩm</th>
+                            <th>Size</th>
+                            <th>Số lượng</th>
+                            <th>Ngày thuê</th>
+                            <th class="text-end">Giá/ngày</th>
+                            <th class="text-end">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.RentalContractDetails != null && Model.RentalContractDetails.Any())
+                        {
+                            foreach (var item in Model.RentalContractDetails)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">@item.Product?.Name</div>
+                                        <small class="text-muted">Mã SP: @item.Product?.ProductCode</small>
+                                    </td>
+                                    <td class="text-center"><span class="badge bg-secondary">@item.SelectedSize</span></td>
+                                    <td class="text-center">@item.Quantity</td>
+                                    <td class="text-center">@item.NumberOfDays</td>
+                                    <td class="text-end">@item.SnapshotUnitPrice.ToString("N0") đ</td>
+                                    <td class="text-end fw-bold">@item.SubTotal.ToString("N0") đ</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* --- TỔNG KẾT TÀI CHÍNH --- *@
+            <div class="row mt-4 pt-3 border-top">
+                <div class="col-md-7">
+                    @if (Model.Promotion != null)
+                    {
+                        <div class="alert alert-info">
+                            <i class="fas fa-tag me-2"></i> Ưu đãi áp dụng: <strong>@Model.Promotion.Code</strong>
+                            <br/><small>@Model.Promotion.Description</small>
+                        </div>
+                    }
+                    <div class="bg-light p-3 rounded">
+                        <h6 class="fw-bold"><i class="fas fa-shield-alt me-2"></i>Quản lý Tiền cọc</h6>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Mức cọc yêu cầu:</span>
+                            <span class="fw-bold">@Model.DepositRequired.ToString("N0") đ</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Trạng thái cọc:</span>
+                            <span class="@(Model.DepositPaid >= Model.DepositRequired ? "text-success" : "text-danger") fw-bold">
+                                @(Model.DepositPaid >= Model.DepositRequired ? "Đã đặt cọc đủ" : "Chưa đủ cọc (" + Model.DepositPaid.ToString("N0") + "đ)")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="d-flex justify-content-between mb-2 h6">
+                        <span>Tạm tính (Tiền thuê):</span>
+                        <span>@Model.SubTotal.ToString("N0") đ</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 h6 text-danger">
+                        <span>Giảm giá khuyến mãi:</span>
+                        <span>- @Model.DiscountAmount.ToString("N0") đ</span>
+                    </div>
+                    <hr/>
+                    <div class="d-flex justify-content-between mb-2 text-success h4 fw-bold">
+                        <span>TỔNG CỘNG:</span>
+                        <span>@Model.TotalAmount.ToString("N0") đ</span>
+                    </div>
+                    <p class="text-muted small text-end">* Tổng cộng chưa bao gồm các khoản bồi thường phát sinh (nếu có)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer bg-white py-3">
+            <div class="d-flex justify-content-between">
+                <a asp-action="MyContracts" class="btn btn-outline-secondary">
+                    <i class="fas fa-chevron-left me-1"></i> Quay lại danh sách
+                </a>
+                <div>
+                    <button class="btn btn-primary" onclick="window.print()">
+                        <i class="fas fa-print me-1"></i> In hợp đồng
+                    </button>
+                    @if (User.IsInRole("Admin") && Model.Status == "PendingDeposit")
+                    {
+                        <button class="btn btn-success ms-2">Xác nhận đã thu cọc</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+}

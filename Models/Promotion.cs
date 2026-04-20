@@ -1,17 +1,49 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ChoThueQuanAo.Models
 {
-   public class Promotion
-   {
-       public int Id { get; set; }
-       public string Code { get; set; } = "";
-       public string? Description { get; set; }
-       public string DiscountType { get; set; } = "Percent";
-       public decimal DiscountValue { get; set; }
-       public decimal MinOrderAmount { get; set; }
-       public DateTime StartDate { get; set; }
-       public DateTime EndDate { get; set; }
-       public int UsageLimit { get; set; }
-       public int UsedCount { get; set; }
-       public bool IsActive { get; set; } = true;
-   }
+    public class Promotion
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "Tên chương trình không được để trống")]
+        [Display(Name = "Tên chương trình")]
+        // Thêm dấu ? để chấp nhận giá trị NULL từ database cũ
+        public string? Name { get; set; } = ""; 
+
+        [Required(ErrorMessage = "Mã không được để trống")]
+        [Display(Name = "Mã giảm giá")]
+        public string Code { get; set; } = ""; 
+        
+        [Display(Name = "Mô tả")]
+        public string? Description { get; set; }
+        
+        [Required]
+        [Display(Name = "Loại giảm giá")]
+        public string DiscountType { get; set; } = "Percent"; 
+        
+        [Required]
+        [Display(Name = "Giá trị giảm")]
+        public decimal DiscountValue { get; set; }
+        
+        [Display(Name = "Đơn tối thiểu")]
+        public decimal MinOrderAmount { get; set; } = 0;
+        
+        [Required]
+        [Display(Name = "Ngày bắt đầu")]
+        public DateTime StartDate { get; set; } = DateTime.Now;
+        
+        [Required]
+        [Display(Name = "Ngày kết thúc")]
+        public DateTime EndDate { get; set; } = DateTime.Now.AddDays(7);
+        
+        [Display(Name = "Giới hạn dùng")]
+        public int UsageLimit { get; set; } = 100;
+        
+        [Display(Name = "Đã dùng")]
+        public int UsedCount { get; set; } = 0;
+        
+        [Display(Name = "Kích hoạt")]
+        public bool IsActive { get; set; } = true;
+    }
 }

@@ -20,102 +20,104 @@ namespace ChoThueQuanAo.Controllers
         }
 
         [AllowAnonymous]
-        public IActionResult Register()
-        {
-            return View();
-        }
+        public IActionResult Register() => View();
 
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            if (!ModelState.IsValid) return View(model);
 
-            var existingUser = await _context.Users
-                .FirstOrDefaultAsync(x => x.Email == model.Email);
-
-            if (existingUser != null)
+            // BẮT ĐẦU TRANSACTION ĐỂ GIỮ DỮ LIỆU AN TOÀN
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                ModelState.AddModelError("", "Email này đã tồn tại.");
+                var existingUser = await _context.Users
+                    .AnyAsync(x => x.Email == model.Email || x.Phone == model.Phone);
+
+                if (existingUser)
+                {
+                    ModelState.AddModelError("", "Email hoặc Số điện thoại này đã được sử dụng.");
+                    return View(model);
+                }
+
+                var user = new User
+                {
+                    FullName = model.FullName,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    Address = model.Address,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
+                    Role = "Customer",
+                    IsActive = true,
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+                
+                // COMMIT: Xác nhận ghi vào database vĩnh viễn
+                await transaction.CommitAsync();
+
+                TempData["Success"] = "Đăng ký thành công. Vui lòng đăng nhập.";
+                return RedirectToAction("Login");
+            }
+            catch (Exception)
+            {
+                // ROLLBACK: Nếu lỗi (mất điện, sập mạng) thì hủy bỏ, không tạo user rác
+                await transaction.RollbackAsync();
+                ModelState.AddModelError("", "Đã xảy ra lỗi hệ thống khi đăng ký.");
                 return View(model);
             }
-
-            var user = new User
-            {
-                FullName = model.FullName,
-                Email = model.Email,
-                Phone = model.Phone,
-                Address = model.Address,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
-
-                // Mặc định khi đăng ký là Customer
-                Role = "Customer",
-
-                IsActive = true,
-                CreatedAt = DateTime.Now
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = "Đăng ký thành công. Vui lòng đăng nhập.";
-            return RedirectToAction("Login");
         }
 
         [AllowAnonymous]
-        public IActionResult Login()
-        {
-            return View();
-        }
+        public IActionResult Login() => View();
 
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            if (!ModelState.IsValid) return View(model);
 
             var user = await _context.Users
-                .FirstOrDefaultAsync(x => x.Email == model.Email && x.IsActive);
+                .FirstOrDefaultAsync(x => (x.Email == model.Email || x.Phone == model.Email) && x.IsActive);
 
-            if (user == null)
+            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
             {
-                ModelState.AddModelError("", "Email hoặc mật khẩu không đúng.");
-                return View(model);
-            }
-
-            bool isValidPassword = BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash);
-
-            if (!isValidPassword)
-            {
-                ModelState.AddModelError("", "Email hoặc mật khẩu không đúng.");
+                ModelState.AddModelError("", "Thông tin đăng nhập không chính xác hoặc tài khoản bị khóa.");
                 return View(model);
             }
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.FullName),
-                new Claim(ClaimTypes.Email, user.Email),
-
-                // Gắn Role vào cookie đăng nhập
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), 
+                new Claim(ClaimTypes.Name, user.FullName ?? ""),
+                new Claim(ClaimTypes.Email, user.Email ?? ""),
                 new Claim(ClaimTypes.Role, user.Role)
             };
 
-            var identity = new ClaimsIdentity(
-                claims,
-                CookieAuthenticationDefaults.AuthenticationScheme
-            );
-
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme, ClaimTypes.Name, ClaimTypes.Role);
             var principal = new ClaimsPrincipal(identity);
+
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                principal
+                principal,
+                new AuthenticationProperties
+                {
+                    IsPersistent = true, 
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
+                }
             );
+
+            if (user.Role == "Admin")
+            {
+                return RedirectToAction("Index", "RentalContract");
+            }
 
             return RedirectToAction("Index", "Home");
         }
@@ -123,43 +125,49 @@ namespace ChoThueQuanAo.Controllers
         [Authorize]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme
-            );
-
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return RedirectToAction("Login");
         }
 
         [AllowAnonymous]
-        public IActionResult ForgotPassword()
-        {
-            return View();
-        }
+        public IActionResult ForgotPassword() => View();
 
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            if (!ModelState.IsValid) return View(model);
 
-            var user = await _context.Users
-                .FirstOrDefaultAsync(x => x.Email == model.Email && x.IsActive);
-
-            if (user == null)
+            // TRANSACTION CHO VIỆC ĐỔI MẬT KHẨU
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                ModelState.AddModelError("", "Không tìm thấy tài khoản với email này.");
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(x => (x.Email == model.Email || x.Phone == model.Email) && x.IsActive);
+
+                if (user == null)
+                {
+                    ModelState.AddModelError("", "Không tìm thấy tài khoản.");
+                    return View(model);
+                }
+
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+                
+                // XÁC NHẬN THAY ĐỔI
+                await transaction.CommitAsync();
+
+                TempData["Success"] = "Đổi mật khẩu thành công. Hãy đăng nhập lại.";
+                return RedirectToAction("Login");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                ModelState.AddModelError("", "Lỗi khi cập nhật mật khẩu.");
                 return View(model);
             }
-
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
-
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = "Đổi mật khẩu thành công. Vui lòng đăng nhập lại.";
-            return RedirectToAction("Login");
         }
 
         [AllowAnonymous]

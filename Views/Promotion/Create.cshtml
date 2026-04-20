@@ -1,0 +1,87 @@
+@model ChoThueQuanAo.Models.Promotion
+
+@{
+    ViewData["Title"] = "Tạo mã khuyến mãi mới";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Tạo Mã Khuyến Mãi Mới</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form asp-action="Create" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Name" class="form-label fw-bold">Tên chương trình</label>
+                                <input asp-for="Name" class="form-control" placeholder="Ví dụ: Giảm giá hè" />
+                                <span asp-validation-for="Name" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Code" class="form-label fw-bold">Mã giảm giá</label>
+                                <input asp-for="Code" class="form-control" placeholder="Ví dụ: SUMMER2024" />
+                                <span asp-validation-for="Code" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="DiscountType" class="form-label fw-bold">Loại giảm giá</label>
+                                <select asp-for="DiscountType" class="form-select">
+                                    <option value="Percent">Phần trăm (%)</option>
+                                    <option value="Amount">Số tiền cố định (đ)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="DiscountValue" class="form-label fw-bold">Mức giảm</label>
+                                <input asp-for="DiscountValue" type="number" class="form-control" />
+                                <span asp-validation-for="DiscountValue" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="StartDate" class="form-label fw-bold">Ngày bắt đầu</label>
+                                <input asp-for="StartDate" type="date" class="form-control" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="EndDate" class="form-label fw-bold">Ngày kết thúc</label>
+                                <input asp-for="EndDate" type="date" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="UsageLimit" class="form-label fw-bold">Giới hạn lượt dùng</label>
+                                <input asp-for="UsageLimit" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label fw-bold">Kích hoạt</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input asp-for="IsActive" class="form-check-input" type="checkbox" checked>
+                                    <label class="form-check-label">Hoạt động</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+                        <div class="d-flex justify-content-end">
+                            <a asp-action="Index" class="btn btn-light border me-2">Hủy bỏ</a>
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="fas fa-save me-1"></i> Lưu mã mới
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
